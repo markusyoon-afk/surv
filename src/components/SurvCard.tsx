@@ -1,0 +1,130 @@
+// Feed card: question, countdown, weighted SAGEmeter bars, inline voting.
+
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { formatRemaining, msRemaining, tally } from '../engine/sage';
+import { useSurv } from '../engine/store';
+import type { Surv } from '../engine/types';
+import { colors, radius } from '../theme';
+
+export function SageBar({ pct, label, mine, acted }: { pct: number; label: string; mine?: boolean; acted?: boolean }) {
+  return (
+    <View style={styles.barRow}>
+      <View style={styles.barTrack}>
+        <View style={[styles.barFill, { width: `${Math.max(pct, 2)}%` }, acted && styles.barActed]} />
+        <Text style={styles.barLabel} numberOfLines={1}>
+          {acted ? '✓ ' : ''}{label}{mine ? '  · your vote' : ''}
+        </Text>
+      </View>
+      <Text style={styles.barPct}>{pct.toFixed(1)}%</Text>
+    </View>
+  );
+}
+
+export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) => void }) {
+  const { me, userById, castVote } = useSurv();
+  const asker = userById(surv.askerId);
+  const myVote = surv.votes.find((v) => v.userId === me.id);
+  const isMine = surv.askerId === me.id;
+  const live = surv.status === 'live' && msRemaining(surv) > 0;
+  const results = tally(surv);
+  const showResults = !!myVote || isMine || !live;
+
+  return (
+    <Pressable style={styles.card} onPress={() => onOpen(surv)}>
+      <View style={styles.header}>
+        <Text style={styles.avatar}>{asker?.avatar ?? '👤'}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.asker}>{isMine ? 'You' : asker?.name}</Text>
+          <Text style={styles.meta}>
+            {surv.category} · {surv.audience.kind === 'public' ? 'Public' : 'Nests'} ·{' '}
+            {live ? `Expires in ${formatRemaining(msRemaining(surv))}` : statusLabel(surv)}
+          </Text>
+        </View>
+        {live && <View style={styles.liveDot} />}
+      </View>
+
+      <Text style={styles.question}>{surv.question}</Text>
+
+      {showResults
+        ? results.map((r) => (
+            <SageBar
+              key={r.optionId}
+              pct={r.pct}
+              label={r.label}
+              mine={myVote?.optionId === r.optionId}
+              acted={surv.actedOptionId === r.optionId}
+            />
+          ))
+        : surv.options.map((opt) => (
+            <Pressable
+              key={opt.id}
+              style={styles.voteBtn}
+              onPress={() => castVote(surv.id, opt.id)}
+            >
+              <Text style={styles.voteBtnText}>{opt.label}</Text>
+              {opt.why ? <Text style={styles.voteWhy}>{opt.why}</Text> : null}
+            </Pressable>
+          ))}
+
+      <Text style={styles.footer}>
+        {surv.votes.length} vote{surv.votes.length === 1 ? '' : 's'}
+        {showResults ? ' · weighted by SAGE' : ' · vote to see the SAGEmeter'}
+      </Text>
+    </Pressable>
+  );
+}
+
+function statusLabel(surv: Surv): string {
+  if (surv.status === 'graded') return surv.outcome === 'good' ? 'Good call ✓' : 'Bad call ✗';
+  if (surv.status === 'acted') return 'Acted — awaiting verdict';
+  return 'Expired — deciding';
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.panel,
+    borderRadius: radius.card,
+    padding: 14,
+    marginHorizontal: 14,
+    marginBottom: 12,
+  },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
+  avatar: { fontSize: 26 },
+  asker: { color: colors.owlDeep, fontWeight: '800', fontSize: 15 },
+  meta: { color: colors.inkSoft, fontSize: 12, marginTop: 1 },
+  liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.good },
+  question: { color: colors.ink, fontSize: 16, fontWeight: '700', marginBottom: 10, lineHeight: 21 },
+  barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 7, gap: 8 },
+  barTrack: {
+    flex: 1,
+    height: 30,
+    backgroundColor: colors.panelDeep,
+    borderRadius: 8,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  barFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: colors.sageBar,
+    borderRadius: 8,
+  },
+  barActed: { backgroundColor: colors.owl },
+  barLabel: { color: colors.ink, fontSize: 13, fontWeight: '600', paddingHorizontal: 10 },
+  barPct: { color: colors.owlDeep, fontWeight: '800', fontSize: 14, width: 52, textAlign: 'right' },
+  voteBtn: {
+    backgroundColor: colors.white,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: colors.chip,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    marginBottom: 7,
+  },
+  voteBtnText: { color: colors.ink, fontWeight: '700', fontSize: 14 },
+  voteWhy: { color: colors.inkSoft, fontSize: 12, marginTop: 2 },
+  footer: { color: colors.inkFaint, fontSize: 12, marginTop: 4 },
+});
