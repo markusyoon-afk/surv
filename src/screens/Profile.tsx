@@ -24,7 +24,7 @@ const CONNECTORS: Array<[ConnectorId, string]> = [
 ];
 
 export function Profile() {
-  const { me, survs, toggleConnector } = useSurv();
+  const { me, survs, toggleConnector, resetDemo } = useSurv();
   const pending = survs.filter((s) => s.askerId === me.id && s.status === 'acted');
   const graded = survs.filter((s) => s.askerId === me.id && s.status === 'graded');
   const sageEntries = Object.entries(me.categorySage) as Array<[string, number]>;
@@ -115,6 +115,10 @@ export function Profile() {
           })}
         </View>
       </View>
+
+      <Pressable style={styles.reset} onPress={resetDemo}>
+        <Text style={styles.resetText}>Reset demo data</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -206,4 +210,6 @@ const styles = StyleSheet.create({
   connectorOn: { backgroundColor: colors.owl },
   connectorText: { color: colors.inkSoft, fontWeight: '700', fontSize: 12.5 },
   connectorTextOn: { color: colors.white },
+  reset: { alignItems: 'center', paddingVertical: 10 },
+  resetText: { color: colors.star, fontSize: 12.5, textDecorationLine: 'underline' },
 });

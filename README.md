@@ -22,14 +22,20 @@ Web preview: `npm run web` · Engine tests: `npm test` · Types: `npm run typech
 
 ## What works today (v1, on-device)
 
-- The Nest feed with the original filters (All/Public/Private · Responded/Not) and live countdowns
+- The Nest feed with the original filters (All/Public/Private · Responded/Not) and live
+  countdowns (30s heartbeat; expired SURVs auto-flip to "deciding")
 - +SURV: question → **✨ Suggest options** (heuristic + mocked Yelp/Google/Nest signals;
-  set `EXPO_PUBLIC_ANTHROPIC_KEY` for live Claude generation) → duration presets → audience → SURVit!
+  set `EXPO_PUBLIC_ANTHROPIC_KEY` for live Claude generation) → duration presets → audience
+  → SURVit!, plus **Extend countdown +24 hrs** on your live SURVs
 - Weighted voting: every vote carries a SAGE weight (Clout + category expertise + Nest
   closeness + pair trust); results show as weighted SAGEmeter bars
 - The decision loop: expired SURV → "I went with…" → Verdict deck (swipe 👍/👎) →
   voter SAGE scores and pair trust actually update
-- Nests and Profile with SAGEmeter, category SAGE, decision history, connector toggles
+- **Round Table** — per-SURV discussion thread (straight off the 2011 beta wishlist)
+- Nests: create your own (name, emoji, members) and tap a member's tier to adjust
+  closeness; Profile with SAGEmeter, category SAGE, decision history, connector toggles
+- **Persistence** — full state survives app restarts (AsyncStorage); "Reset demo data"
+  in Profile starts fresh; first-run onboarding explains the loop
 
 ## Repo map
 

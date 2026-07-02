@@ -1,16 +1,19 @@
 // SURV detail overlay: full results (weighted + raw), voter weights, countdown,
 // and — for your own expired SURVs — the "Act on it" step.
 
-import React from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SageBar } from '../components/SurvCard';
 import { displayWeight, formatRemaining, msRemaining, tally, winningOption } from '../engine/sage';
 import { useSurv } from '../engine/store';
 import type { Surv } from '../engine/types';
 import { colors, radius } from '../theme';
 
+const HOUR = 3600_000;
+
 export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () => void }) {
-  const { me, userById, castVote, actOn } = useSurv();
+  const { me, userById, castVote, actOn, addComment, extendSurv } = useSurv();
+  const [comment, setComment] = useState('');
   if (!surv) return null;
 
   const asker = userById(surv.askerId);
@@ -66,6 +69,12 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
               </>
             )}
 
+            {isMine && live && (
+              <Pressable style={styles.extendBtn} onPress={() => extendSurv(surv.id, 24 * HOUR)}>
+                <Text style={styles.extendText}>⏳ Extend countdown +24 hrs</Text>
+              </Pressable>
+            )}
+
             {needsDecision && (
               <>
                 <Text style={styles.section}>Time to decide — what did you do?</Text>
@@ -103,6 +112,47 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
                 </Text>
               </>
             )}
+
+            <Text style={styles.section}>Round Table</Text>
+            {(surv.comments ?? []).map((c) => {
+              const author = userById(c.userId);
+              return (
+                <View key={c.id} style={styles.commentRow}>
+                  <Text style={{ fontSize: 18 }}>{author?.avatar}</Text>
+                  <View style={styles.commentBubble}>
+                    <Text style={styles.commentAuthor}>
+                      {c.userId === me.id ? 'You' : author?.name}
+                    </Text>
+                    <Text style={styles.commentText}>{c.text}</Text>
+                  </View>
+                </View>
+              );
+            })}
+            {(surv.comments ?? []).length === 0 && (
+              <Text style={styles.hint}>No talk yet — say why you’d choose what you chose.</Text>
+            )}
+            <View style={styles.commentInputRow}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="Add to the Round Table…"
+                placeholderTextColor={colors.inkFaint}
+                value={comment}
+                onChangeText={setComment}
+                onSubmitEditing={() => {
+                  addComment(surv.id, comment);
+                  setComment('');
+                }}
+              />
+              <Pressable
+                style={styles.commentSend}
+                onPress={() => {
+                  addComment(surv.id, comment);
+                  setComment('');
+                }}
+              >
+                <Text style={styles.commentSendText}>Post</Text>
+              </Pressable>
+            </View>
           </ScrollView>
         </View>
       </View>
@@ -131,4 +181,41 @@ const styles = StyleSheet.create({
   voterChoice: { color: colors.inkSoft, fontSize: 12.5, flex: 1 },
   weightPill: { backgroundColor: colors.sage, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
   weightText: { color: colors.navy, fontWeight: '800', fontSize: 12 },
+  extendBtn: {
+    backgroundColor: colors.panelDeep,
+    borderRadius: radius.button,
+    paddingVertical: 9,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  extendText: { color: colors.inkSoft, fontWeight: '700', fontSize: 13 },
+  commentRow: { flexDirection: 'row', gap: 8, marginBottom: 8, alignItems: 'flex-start' },
+  commentBubble: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: colors.chip,
+    padding: 9,
+  },
+  commentAuthor: { color: colors.owlDeep, fontWeight: '800', fontSize: 12.5 },
+  commentText: { color: colors.ink, fontSize: 13.5, marginTop: 2, lineHeight: 18 },
+  commentInputRow: { flexDirection: 'row', gap: 7, marginTop: 4 },
+  commentInput: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: colors.chip,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    color: colors.ink,
+  },
+  commentSend: {
+    backgroundColor: colors.owl,
+    borderRadius: radius.button,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+  },
+  commentSendText: { color: colors.white, fontWeight: '800', fontSize: 13.5 },
 });

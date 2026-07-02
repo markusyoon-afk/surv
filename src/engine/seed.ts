@@ -216,6 +216,20 @@ export function seedSurvs(now = Date.now()): Surv[] {
         { userId: 'u_insup', optionId: 'o_thai', weight: 0.51, votedAt: now - 30 * HOUR },
         { userId: 'u_dan', optionId: 'o_greek', weight: 0.45, votedAt: now - 26 * HOUR },
       ],
+      comments: [
+        {
+          id: 'c_seed1',
+          userId: 'u_linda',
+          text: 'Ruby of Siam, trust me — get the crispy duck curry.',
+          at: now - DAY,
+        },
+        {
+          id: 'c_seed2',
+          userId: 'u_mike',
+          text: 'Cookout means I can finally show off the smoker. Just saying.',
+          at: now - 22 * HOUR,
+        },
+      ],
     },
     {
       // An acted-on SURV awaiting my verdict — demos the swipe feedback step

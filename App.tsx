@@ -1,7 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { NightSky } from './src/components/NightSky';
+import { Onboarding } from './src/components/Onboarding';
 import { SurvProvider, useSurv } from './src/engine/store';
 import type { Surv } from './src/engine/types';
 import { HomeFeed } from './src/screens/HomeFeed';
@@ -20,11 +22,37 @@ const TABS: Array<[Tab, string, string]> = [
   ['profile', '🦉', 'You'],
 ];
 
+const ONBOARDED_KEY = 'surv.onboarded.v1';
+
 function Shell() {
   const [tab, setTab] = useState<Tab>('home');
   const [openSurv, setOpenSurv] = useState<Surv | null>(null);
-  const { me, survs } = useSurv();
-  const verdictsDue = survs.filter((s) => s.askerId === me.id && s.status === 'acted').length;
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const { me, survs, sweepExpired } = useSurv();
+  const dueForMe = survs.filter(
+    (s) => s.askerId === me.id && (s.status === 'acted' || s.status === 'deciding'),
+  ).length;
+
+  // Minute heartbeat: countdown labels stay fresh and expired SURVs flip to deciding.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      sweepExpired();
+      setTick((t) => t + 1);
+    }, 30_000);
+    return () => clearInterval(timer);
+  }, [sweepExpired]);
+
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDED_KEY)
+      .then((v) => setShowOnboarding(!v))
+      .catch(() => {});
+  }, []);
+
+  const dismissOnboarding = () => {
+    setShowOnboarding(false);
+    AsyncStorage.setItem(ONBOARDED_KEY, 'y').catch(() => {});
+  };
 
   return (
     <NightSky>
@@ -57,9 +85,9 @@ function Shell() {
             <Pressable key={key} style={styles.tab} onPress={() => setTab(key)}>
               <Text style={styles.tabIcon}>{icon}</Text>
               <Text style={[styles.tabLabel, tab === key && styles.tabLabelOn]}>{label}</Text>
-              {key === 'profile' && verdictsDue > 0 && (
+              {key === 'profile' && dueForMe > 0 && (
                 <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{verdictsDue}</Text>
+                  <Text style={styles.badgeText}>{dueForMe}</Text>
                 </View>
               )}
             </Pressable>
@@ -70,6 +98,7 @@ function Shell() {
           surv={openSurv ? survs.find((s) => s.id === openSurv.id) ?? null : null}
           onClose={() => setOpenSurv(null)}
         />
+        {showOnboarding && <Onboarding onDone={dismissOnboarding} />}
         <StatusBar style="light" />
       </SafeAreaView>
     </NightSky>

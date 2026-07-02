@@ -1,0 +1,69 @@
+// First-run explainer — three beats of the SURV loop, then get out of the way.
+
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { colors, radius } from '../theme';
+
+const BEATS: Array<[string, string, string]> = [
+  ['🪺', 'Build your Nests', 'Your spheres of influence — family, foodies, crew. Post decisions to the people who actually know you.'],
+  ['⚖️', 'Votes are weighted', 'Every vote counts by SAGE: proven expertise, closeness, and who has steered you right before.'],
+  ['👍', 'Swipe the verdict', 'Act on the result, then grade it. Good call or bad, SURV learns whose advice to trust next time.'],
+];
+
+export function Onboarding({ onDone }: { onDone: () => void }) {
+  return (
+    <View style={styles.backdrop}>
+      <View style={styles.card}>
+        <Text style={styles.logo}>🦉 SURV</Text>
+        <Text style={styles.tagline}>Live it! SURV it!</Text>
+        {BEATS.map(([emoji, title, body]) => (
+          <View key={title} style={styles.beat}>
+            <Text style={styles.beatEmoji}>{emoji}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.beatTitle}>{title}</Text>
+              <Text style={styles.beatBody}>{body}</Text>
+            </View>
+          </View>
+        ))}
+        <Pressable style={styles.cta} onPress={onDone}>
+          <Text style={styles.ctaText}>Let’s SURV</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(10,22,36,0.88)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 22,
+  },
+  card: {
+    backgroundColor: colors.panel,
+    borderRadius: 20,
+    padding: 22,
+    width: '100%',
+    maxWidth: 420,
+  },
+  logo: { color: colors.owlDeep, fontSize: 28, fontWeight: '900', textAlign: 'center', letterSpacing: 2 },
+  tagline: { color: colors.inkSoft, fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 18 },
+  beat: { flexDirection: 'row', gap: 12, marginBottom: 16, alignItems: 'flex-start' },
+  beatEmoji: { fontSize: 28 },
+  beatTitle: { color: colors.ink, fontWeight: '800', fontSize: 15.5 },
+  beatBody: { color: colors.inkSoft, fontSize: 13.5, lineHeight: 19, marginTop: 2 },
+  cta: {
+    backgroundColor: colors.owl,
+    borderRadius: radius.card,
+    paddingVertical: 13,
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  ctaText: { color: colors.white, fontWeight: '900', fontSize: 16.5, letterSpacing: 0.5 },
+});

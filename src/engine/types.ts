@@ -77,6 +77,14 @@ export interface Vote {
   votedAt: number;
 }
 
+/** Round Table — threaded talk on a SURV (original beta wishlist item). */
+export interface SurvComment {
+  id: string;
+  userId: string;
+  text: string;
+  at: number;
+}
+
 export type SurvStatus = 'live' | 'deciding' | 'acted' | 'graded';
 export type Outcome = 'good' | 'bad';
 
@@ -97,6 +105,7 @@ export interface Surv {
   actedOptionId?: string;
   /** Swipe verdict: right = good, left = bad. */
   outcome?: Outcome;
+  comments?: SurvComment[];
 }
 
 export interface OptionTally {

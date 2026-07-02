@@ -1,16 +1,36 @@
-// On-device app store (React context). The engine stays pure; this file owns state
-// transitions so a future backend can replace it behind the same interface.
+// On-device app store (React context) with AsyncStorage persistence. The engine
+// stays pure; this file owns state transitions so a future backend can replace it
+// behind the same interface.
 
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { applyOutcome, voterWeight } from './sage';
 import { ME, seedNests, seedSurvs, seedUsers } from './seed';
-import type { Audience, Category, Nest, Outcome, Surv, SurvOption, User } from './types';
+import type {
+  Audience,
+  Category,
+  ClosenessTier,
+  Nest,
+  Outcome,
+  Surv,
+  SurvOption,
+  User,
+} from './types';
+
+const STORAGE_KEY = 'surv.state.v1';
+
+interface PersistedState {
+  users: User[];
+  nests: Nest[];
+  survs: Surv[];
+}
 
 interface SurvStore {
   me: User;
   users: User[];
   nests: Nest[];
   survs: Surv[];
+  hydrated: boolean;
   userById: (id: string) => User | undefined;
   castVote: (survId: string, optionId: string) => void;
   createSurv: (input: {
@@ -22,15 +42,75 @@ interface SurvStore {
   }) => Surv;
   actOn: (survId: string, optionId: string) => void;
   grade: (survId: string, outcome: Outcome) => void;
+  addComment: (survId: string, text: string) => void;
+  extendSurv: (survId: string, extraMs: number) => void;
+  sweepExpired: () => void;
+  createNest: (name: string, emoji: string, memberIds: string[]) => void;
+  cycleTier: (nestId: string, userId: string) => void;
   toggleConnector: (connector: User['connectors'][number]) => void;
+  resetDemo: () => void;
 }
 
 const Ctx = createContext<SurvStore | null>(null);
 
+const TIER_CYCLE: Record<ClosenessTier, ClosenessTier> = {
+  inner: 'regular',
+  regular: 'outer',
+  outer: 'inner',
+};
+
+/** Flip any live SURV whose countdown has ended into the deciding state. */
+function sweep(survs: Surv[], now = Date.now()): Surv[] {
+  let changed = false;
+  const next = survs.map((s) => {
+    if (s.status === 'live' && s.expiresAt <= now) {
+      changed = true;
+      return { ...s, status: 'deciding' as const };
+    }
+    return s;
+  });
+  return changed ? next : survs;
+}
+
 export function SurvProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<User[]>(seedUsers);
-  const [nests] = useState<Nest[]>(seedNests);
-  const [survs, setSurvs] = useState<Surv[]>(() => seedSurvs());
+  const [nests, setNests] = useState<Nest[]>(seedNests);
+  const [survs, setSurvs] = useState<Surv[]>(() => sweep(seedSurvs()));
+  const [hydrated, setHydrated] = useState(false);
+  const skipNextSave = useRef(false);
+
+  // Hydrate once from disk; seeds remain the first-run experience.
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const saved = JSON.parse(raw) as PersistedState;
+          if (saved.users?.length && saved.survs && saved.nests?.length) {
+            skipNextSave.current = true;
+            setUsers(saved.users);
+            setNests(saved.nests);
+            setSurvs(sweep(saved.survs));
+          }
+        }
+      } catch {
+        // Corrupt state — fall through to seeds; next save overwrites it.
+      } finally {
+        setHydrated(true);
+      }
+    })();
+  }, []);
+
+  // Persist on every state change after hydration.
+  useEffect(() => {
+    if (!hydrated) return;
+    if (skipNextSave.current) {
+      skipNextSave.current = false;
+      return;
+    }
+    const state: PersistedState = { users, nests, survs };
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+  }, [users, nests, survs, hydrated]);
 
   const store = useMemo<SurvStore>(() => {
     const userById = (id: string) => users.find((u) => u.id === id);
@@ -41,6 +121,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       users,
       nests,
       survs,
+      hydrated,
       userById,
 
       castVote: (survId, optionId) => {
@@ -71,6 +152,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
           expiresAt: now + durationMs,
           status: 'live',
           votes: [],
+          comments: [],
         };
         setSurvs((prev) => [surv, ...prev]);
         return surv;
@@ -101,6 +183,69 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         );
       },
 
+      addComment: (survId, text) => {
+        const trimmed = text.trim();
+        if (!trimmed) return;
+        setSurvs((prev) =>
+          prev.map((s) =>
+            s.id === survId
+              ? {
+                  ...s,
+                  comments: [
+                    ...(s.comments ?? []),
+                    { id: `c_${Date.now()}`, userId: ME, text: trimmed, at: Date.now() },
+                  ],
+                }
+              : s,
+          ),
+        );
+      },
+
+      extendSurv: (survId, extraMs) => {
+        setSurvs((prev) =>
+          prev.map((s) =>
+            s.id === survId && s.askerId === ME && s.status === 'live'
+              ? { ...s, expiresAt: s.expiresAt + extraMs }
+              : s,
+          ),
+        );
+      },
+
+      sweepExpired: () => setSurvs((prev) => sweep(prev)),
+
+      createNest: (name, emoji, memberIds) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const nest: Nest = {
+          id: `n_${Date.now()}`,
+          name: trimmed,
+          emoji,
+          ownerId: ME,
+          members: [
+            { userId: ME, tier: 'inner' },
+            ...memberIds.filter((id) => id !== ME).map((userId) => ({
+              userId,
+              tier: 'regular' as ClosenessTier,
+            })),
+          ],
+        };
+        setNests((prev) => [...prev, nest]);
+      },
+
+      cycleTier: (nestId, userId) => {
+        setNests((prev) =>
+          prev.map((n) => {
+            if (n.id !== nestId || n.ownerId !== ME || userId === ME) return n;
+            return {
+              ...n,
+              members: n.members.map((m) =>
+                m.userId === userId ? { ...m, tier: TIER_CYCLE[m.tier] } : m,
+              ),
+            };
+          }),
+        );
+      },
+
       toggleConnector: (connector) => {
         setUsers((prev) =>
           prev.map((u) =>
@@ -115,8 +260,15 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
           ),
         );
       },
+
+      resetDemo: () => {
+        AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+        setUsers(seedUsers());
+        setNests(seedNests());
+        setSurvs(sweep(seedSurvs()));
+      },
     };
-  }, [users, nests, survs]);
+  }, [users, nests, survs, hydrated]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }
