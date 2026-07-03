@@ -402,14 +402,15 @@ test('rejected labels never come back in suggestions', () => {
 
 // ---- the AI population + public arena ----
 
-test('population: 1000 deterministic avatars with real profiles', () => {
-  const pop = getPopulation();
-  assert.ok(pop.length >= POPULATION_SIZE, `expected >= ${POPULATION_SIZE}, got ${pop.length}`);
-  assert.ok(pop.every((u) => u.isAI), 'all population members are AI-labeled');
-  // deterministic: same index → identical avatar
+test('population: 100,000 virtual avatars, deterministic and always learning', () => {
+  assert.equal(POPULATION_SIZE, 100_000);
+  const sample = getPopulation(200);
+  assert.ok(sample.length >= 200 && sample.every((u) => u.isAI), 'sampled avatars are AI-labeled');
+  // deterministic: same index → identical avatar (any index in the 100k)
   assert.deepEqual(makeAvatar(42), makeAvatar(42));
-  const sample = makeAvatar(7);
-  assert.ok(sample.name.includes(' ') && sample.clout >= 30 && Object.keys(sample.categorySage).length >= 2);
+  assert.deepEqual(makeAvatar(99_999).id, 'ai_99999');
+  const far = makeAvatar(87_654);
+  assert.ok(far.name.includes(' ') && far.clout >= 30 && Object.keys(far.categorySage).length >= 2);
 });
 
 test('advisors are informed, not random: rated options win', () => {

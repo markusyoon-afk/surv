@@ -3,7 +3,7 @@
 // device sees the same arena without a byte of storage — your votes overlay
 // locally, and outcomes train YOUR sage when you helped decide well.
 
-import { getPopulation } from './population';
+import { avatarAt, POPULATION_SIZE, STAR_AVATARS } from './population';
 import type { Category, Outcome } from './types';
 
 export interface ArenaOption {
@@ -71,8 +71,11 @@ function makeArenaSurv(bucket: number, slot: number): ArenaSurv | null {
   const item = BANK[Math.floor(rand() * BANK.length)];
   const createdAt = bucket * BUCKET + Math.floor(rand() * BUCKET);
   const lifetime = (2 + rand() * 4) * HOUR;
-  const pop = getPopulation();
-  const asker = pop[Math.floor(rand() * pop.length)];
+  // Stars headline occasionally; the rest of the 100k take the other slots.
+  const asker =
+    rand() < 0.04
+      ? STAR_AVATARS[Math.floor(rand() * STAR_AVATARS.length)]
+      : avatarAt(Math.floor(rand() * POPULATION_SIZE));
   const velocity = 1 + rand() * 7;
   const raw = item.options.map(() => 0.35 + rand());
   const total = raw.reduce((s, r) => s + r, 0);
@@ -136,6 +139,7 @@ export function arenaResult(
 
 /** Headline stats for the ticker — the scale of decisions moving through the Forest. */
 export function arenaStats(now = Date.now()): {
+  activeSages: number;
   newThisHour: number;
   liveNow: number;
   votesLastHour: number;
@@ -144,6 +148,7 @@ export function arenaStats(now = Date.now()): {
   const rand = mulberry32(bucket);
   // ~1,002/hr entering × ~4h average lifetime ≈ ~4,000 live at any moment.
   return {
+    activeSages: POPULATION_SIZE + STAR_AVATARS.length,
     newThisHour: NEW_PER_HOUR,
     liveNow: 3800 + Math.floor(rand() * 500),
     votesLastHour: 21_000 + Math.floor(rand() * 6000),

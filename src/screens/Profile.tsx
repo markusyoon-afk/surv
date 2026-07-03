@@ -18,6 +18,7 @@ import { AVATAR_STAGES, nextStage, OwlAvatar, stageForClout } from '../component
 import { Image } from 'react-native';
 import { useSurv } from '../engine/store';
 import { CLAUDE_KEY_STORAGE } from '../engine/suggest';
+import { inviteUrl, shareText } from '../lib/share';
 import type { ConnectorId, Outcome } from '../engine/types';
 import { colors, radius } from '../theme';
 
@@ -47,6 +48,16 @@ export function Profile() {
             <Text style={styles.name}>{me.name}</Text>
             <Text style={styles.bio}>{me.bio}</Text>
           </View>
+          <Pressable
+            style={styles.inviteBtn}
+            onPress={() =>
+              shareText(
+                `🦉 I'm on SURV — my personal decision engine. Help me make better calls (and become a sage yourself): ${inviteUrl(me.name)}`,
+              )
+            }
+          >
+            <Text style={styles.inviteBtnText}>＋ Invite</Text>
+          </Pressable>
         </View>
         <Text style={styles.section}>SAGEmeter</Text>
         <View style={styles.meterTrack}>
@@ -480,6 +491,13 @@ const styles = StyleSheet.create({
   connectorOn: { backgroundColor: colors.owl },
   connectorText: { color: colors.inkSoft, fontWeight: '700', fontSize: 12.5 },
   connectorTextOn: { color: colors.white },
+  inviteBtn: {
+    backgroundColor: colors.owl,
+    borderRadius: radius.chip,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+  inviteBtnText: { color: colors.white, fontWeight: '800', fontSize: 12.5 },
   reset: { alignItems: 'center', paddingVertical: 10 },
   resetText: { color: colors.star, fontSize: 12.5, textDecorationLine: 'underline' },
   routineChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },

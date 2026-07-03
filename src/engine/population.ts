@@ -8,7 +8,10 @@
 import type { Category, SurvOption, User } from './types';
 import { CATEGORIES } from './types';
 
-export const POPULATION_SIZE = 1000;
+export const POPULATION_SIZE = 100_000;
+
+/** Day counter so every avatar's SAGE visibly grows over time — always building. */
+const dayIndex = () => Math.floor(Date.now() / 86_400_000);
 
 function mulberry32(seed: number) {
   return () => {
@@ -45,9 +48,11 @@ export function makeAvatar(i: number): User {
   const primary = CATEGORIES[Math.floor(rand() * CATEGORIES.length)];
   let secondary = CATEGORIES[Math.floor(rand() * CATEGORIES.length)];
   if (secondary === primary) secondary = CATEGORIES[(CATEGORIES.indexOf(primary) + 3) % CATEGORIES.length];
+  // Base expertise plus a slow daily climb — the population never stops learning.
+  const growth = Math.min(12, ((dayIndex() + i) % 13));
   const categorySage: Partial<Record<Category, number>> = {
-    [primary]: Math.round(45 + rand() * 45),
-    [secondary]: Math.round(35 + rand() * 30),
+    [primary]: Math.min(97, Math.round(40 + rand() * 45 + growth)),
+    [secondary]: Math.min(90, Math.round(32 + rand() * 30 + growth / 2)),
   };
   return {
     id: `ai_${i}`,
@@ -63,26 +68,39 @@ export function makeAvatar(i: number): User {
   };
 }
 
-let cache: User[] | null = null;
+// The population is VIRTUAL: 100,000 avatars exist as deterministic seeds and
+// only materialize when touched. A small cache keeps hot avatars cheap.
+const avatarCache = new Map<number, User>();
 
-/** The full population (stars first). Deterministic — identical on every device. */
-export function getPopulation(size = POPULATION_SIZE): User[] {
-  if (!cache || cache.length !== size + STAR_AVATARS.length) {
-    cache = [...STAR_AVATARS, ...Array.from({ length: size }, (_, i) => makeAvatar(i))];
+export function avatarAt(i: number): User {
+  const idx = ((i % POPULATION_SIZE) + POPULATION_SIZE) % POPULATION_SIZE;
+  let avatar = avatarCache.get(idx);
+  if (!avatar) {
+    if (avatarCache.size > 4000) avatarCache.clear();
+    avatar = makeAvatar(idx);
+    avatarCache.set(idx, avatar);
   }
-  return cache;
+  return avatar;
 }
 
-/** The best advisor in the population for a category, excluding given ids. */
+/** A materialized sample (stars first) — for leaderboards and browsing. */
+export function getPopulation(sample = 200): User[] {
+  return [...STAR_AVATARS, ...Array.from({ length: Math.min(sample, POPULATION_SIZE) }, (_, i) => avatarAt(i))];
+}
+
+/** Best advisor for a category from a deterministic sample of the 100k. */
 export function pickAdvisor(category: Category, excludeIds: Set<string>, seed: number): User {
-  const pop = getPopulation();
   const rand = mulberry32(seed);
-  // Prefer strong category sages; sample among the qualified for variety.
-  const qualified = pop.filter(
-    (u) => !excludeIds.has(u.id) && (u.categorySage[category] ?? 0) >= 55,
-  );
-  const pool = qualified.length > 0 ? qualified : pop.filter((u) => !excludeIds.has(u.id));
-  return pool[Math.floor(rand() * pool.length)];
+  let best: User | null = null;
+  let fallback: User | null = null;
+  for (let n = 0; n < 48; n++) {
+    const candidate = avatarAt(Math.floor(rand() * POPULATION_SIZE));
+    if (excludeIds.has(candidate.id)) continue;
+    if (!fallback) fallback = candidate;
+    const sage = candidate.categorySage[category] ?? 0;
+    if (sage >= 55 && (!best || sage > (best.categorySage[category] ?? 0))) best = candidate;
+  }
+  return best ?? fallback ?? avatarAt(Math.floor(rand() * POPULATION_SIZE));
 }
 
 /**

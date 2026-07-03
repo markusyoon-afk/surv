@@ -36,7 +36,7 @@ function Shell() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState<SurvDraft | null>(null);
-  const { me, survs, sweepExpired, liveTick, setMyName, importSurv, importVote, hydrated } = useSurv();
+  const { me, survs, sweepExpired, liveTick, setMyName, addAcquaintance, importSurv, importVote, hydrated } = useSurv();
   const dueForMe = survs.filter(
     (s) => s.askerId === me.id && (s.status === 'acted' || s.status === 'deciding'),
   ).length;
@@ -102,7 +102,10 @@ function Shell() {
     const payload = parseShareHash();
     if (!payload) return;
     clearShareHash();
-    if (payload.kind === 'surv') {
+    if (payload.kind === 'invite') {
+      addAcquaintance(payload.inviterName);
+      setImportNotice(`🦉 ${payload.inviterName} invited you — welcome to SURV. Decide together, become sages.`);
+    } else if (payload.kind === 'surv') {
       const imported = importSurv(payload.packet);
       if (imported) {
         setOpenSurv(imported);

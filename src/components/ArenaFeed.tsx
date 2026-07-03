@@ -21,7 +21,7 @@ export function ArenaFeed() {
       <View style={styles.ticker}>
         <Ionicons name="pulse" size={14} color={colors.sage} />
         <Text style={styles.tickerText}>
-          {stats.newThisHour.toLocaleString()} new SURVs this hour · {stats.liveNow.toLocaleString()} live in the Forest
+          {stats.activeSages.toLocaleString()} sages active · {stats.newThisHour.toLocaleString()} new SURVs/hr · {stats.liveNow.toLocaleString()} live
         </Text>
         <Pressable onPress={() => setRefreshKey((k) => k + 1)} hitSlop={8}>
           <Ionicons name="refresh" size={14} color={colors.star} />

@@ -19,7 +19,11 @@ export interface VotePacket {
 
 export type ShareHashPayload =
   | { kind: 'surv'; packet: SurvPacket }
-  | { kind: 'vote'; packet: VotePacket };
+  | { kind: 'vote'; packet: VotePacket }
+  | { kind: 'invite'; inviterName: string };
+
+/** The canonical public home of the app — used when sharing from native. */
+export const LIVE_URL = 'https://markusyoon-afk.github.io/surv/';
 
 const enc = (o: unknown) => encodeURIComponent(JSON.stringify(o));
 
@@ -53,9 +57,19 @@ export function voteBackUrl(packet: VotePacket): string | null {
   return `${base}#v=${enc(packet)}`;
 }
 
+/** Invite a real human: they open this, onboard, and you're in their circle. */
+export function inviteUrl(myName: string): string {
+  const base = appBaseUrl() ?? LIVE_URL;
+  return `${base}#i=${encodeURIComponent(myName)}`;
+}
+
 export function parseShareHash(): ShareHashPayload | null {
   if (!onWeb()) return null;
   const hash = window.location.hash;
+  if (hash.startsWith('#i=')) {
+    const inviterName = decodeURIComponent(hash.slice(3)).trim();
+    if (inviterName) return { kind: 'invite', inviterName };
+  }
   if (hash.startsWith('#s=')) {
     const packet = dec<SurvPacket>(hash.slice(3));
     if (packet?.surv?.id && packet.surv.question) return { kind: 'surv', packet };

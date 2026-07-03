@@ -68,6 +68,8 @@ interface SurvStore {
   /** Paste .ics text (Google Calendar / iCal export) → events feed the drafts engine. */
   importCalendar: (icsText: string) => number;
   setMyName: (name: string) => void;
+  /** An invited/inviting human enters your world as a known face. */
+  addAcquaintance: (name: string) => void;
   importSurv: (packet: { surv: Omit<Surv, 'votes' | 'comments'>; askerName: string }) => Surv | null;
   importVote: (packet: { survId: string; optionId: string; voterName: string }) => boolean;
   castVote: (survId: string, optionId: string) => void;
@@ -339,6 +341,14 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
           );
         });
         return parsed.length;
+      },
+
+      addAcquaintance: (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        setUsers((prev) =>
+          prev.some((u) => u.name === trimmed) ? prev : [...prev, makeGuest(trimmed)],
+        );
       },
 
       setMyName: (name) => {
