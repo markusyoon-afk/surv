@@ -2,7 +2,8 @@
 // ⚡ Post now sends it straight to your Tree: options auto-filled, zero composer.
 
 import React, { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Tap } from './Tap';
 import { buildDrafts, type SurvDraft } from '../engine/drafts';
 import { useSurv } from '../engine/store';
 import { colors, radius } from '../theme';
@@ -30,7 +31,7 @@ export function DraftCards({
   if (drafts.length === 0) return null;
 
   const cards = drafts.map((d) => (
-    <Pressable
+    <Tap
       key={d.id}
       style={[styles.card, horizontal && styles.cardHorizontal]}
       onPress={() => onSelect(d)}
@@ -40,12 +41,12 @@ export function DraftCards({
         {d.question}
       </Text>
       <View style={styles.actions}>
-        <Pressable style={styles.postBtn} onPress={() => quickPostDraft(d)} hitSlop={6}>
+        <Tap style={styles.postBtn} onPress={() => quickPostDraft(d)} hitSlop={6}>
           <Text style={styles.postBtnText}>🕊️ Post now</Text>
-        </Pressable>
+        </Tap>
         <Text style={styles.cta}>edit →</Text>
       </View>
-    </Pressable>
+    </Tap>
   ));
 
   if (horizontal) {

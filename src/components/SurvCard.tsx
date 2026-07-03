@@ -2,7 +2,8 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Tap } from './Tap';
 import { OwlAvatar } from './OwlAvatar';
 import { formatRemaining, msRemaining, tally } from '../engine/sage';
 import { useSurv } from '../engine/store';
@@ -44,7 +45,7 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
   };
 
   return (
-    <Pressable style={styles.card} onPress={() => onOpen(surv)}>
+    <Tap style={styles.card} onPress={() => onOpen(surv)}>
       <View style={styles.header}>
         <OwlAvatar
           clout={asker?.clout ?? 45}
@@ -87,14 +88,14 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
             />
           ))
         : surv.options.map((opt) => (
-            <Pressable
+            <Tap
               key={opt.id}
               style={styles.voteBtn}
               onPress={() => castVote(surv.id, opt.id)}
             >
               <Text style={styles.voteBtnText}>{opt.label}</Text>
               {opt.why ? <Text style={styles.voteWhy}>{opt.why}</Text> : null}
-            </Pressable>
+            </Tap>
           ))}
 
       {needsAct && (
@@ -102,9 +103,9 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
           <Text style={styles.actLabel}>⏳ Flight’s over — what did you do?</Text>
           <View style={styles.actBtns}>
             {surv.options.map((opt) => (
-              <Pressable key={opt.id} style={styles.actBtn} onPress={() => actOn(surv.id, opt.id)}>
+              <Tap key={opt.id} style={styles.actBtn} onPress={() => actOn(surv.id, opt.id)}>
                 <Text style={styles.actBtnText} numberOfLines={1}>{opt.label}</Text>
-              </Pressable>
+              </Tap>
             ))}
           </View>
         </View>
@@ -114,12 +115,12 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
         <View style={styles.verdictRow}>
           <Text style={styles.actLabel}>How did it turn out?</Text>
           <View style={styles.verdictBtns}>
-            <Pressable style={[styles.verdictBtn, styles.goodBtn]} onPress={() => doGrade('good')}>
+            <Tap style={[styles.verdictBtn, styles.goodBtn]} onPress={() => doGrade('good')}>
               <Text style={styles.verdictText}>👍 Good call</Text>
-            </Pressable>
-            <Pressable style={[styles.verdictBtn, styles.badBtn]} onPress={() => doGrade('bad')}>
+            </Tap>
+            <Tap style={[styles.verdictBtn, styles.badBtn]} onPress={() => doGrade('bad')}>
               <Text style={styles.verdictText}>👎 Bad call</Text>
-            </Pressable>
+            </Tap>
           </View>
         </View>
       )}
@@ -130,7 +131,7 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
         {surv.votes.length} vote{surv.votes.length === 1 ? '' : 's'}
         {showResults ? ' · weighted by SAGE' : ' · vote to see the SAGEmeter'}
       </Text>
-    </Pressable>
+    </Tap>
   );
 }
 

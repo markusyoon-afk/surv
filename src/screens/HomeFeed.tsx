@@ -3,7 +3,8 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Tap } from '../components/Tap';
 import { ArenaFeed } from '../components/ArenaFeed';
 import { DigestCard } from '../components/DigestCard';
 import { DraftCards } from '../components/DraftCards';
@@ -59,18 +60,18 @@ export function HomeFeed({
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.scopeRow}>
-        <Pressable
+        <Tap
           style={[styles.scopeBtn, scope === 'network' && styles.scopeBtnOn]}
           onPress={() => setScope('network')}
         >
           <Text style={[styles.scopeText, scope === 'network' && styles.scopeTextOn]}>🌳 My Tree</Text>
-        </Pressable>
-        <Pressable
+        </Tap>
+        <Tap
           style={[styles.scopeBtn, scope === 'arena' && styles.scopeBtnOn]}
           onPress={() => setScope('arena')}
         >
           <Text style={[styles.scopeText, scope === 'arena' && styles.scopeTextOn]}>🌲 The Forest</Text>
-        </Pressable>
+        </Tap>
       </View>
 
       {scope === 'arena' ? (
@@ -82,20 +83,20 @@ export function HomeFeed({
 
           <View style={styles.filterRow}>
             <Ionicons name="funnel-outline" size={12} color={colors.star} />
-            <Pressable
+            <Tap
               style={styles.filterChip}
               onPress={() => setVisibility(cycle(VISIBILITY, visibility))}
             >
               <Text style={styles.filterText}>{VISIBILITY_LABEL[visibility]}</Text>
               <Ionicons name="chevron-down" size={11} color={colors.star} />
-            </Pressable>
-            <Pressable
+            </Tap>
+            <Tap
               style={styles.filterChip}
               onPress={() => setResponded(cycle(RESPONDED, responded))}
             >
               <Text style={styles.filterText}>{RESPONDED_LABEL[responded]}</Text>
               <Ionicons name="chevron-down" size={11} color={colors.star} />
-            </Pressable>
+            </Tap>
             <Text style={styles.count}>{feed.length} SURV{feed.length === 1 ? '' : 's'}</Text>
           </View>
 

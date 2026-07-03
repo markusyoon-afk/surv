@@ -3,7 +3,8 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Tap } from './src/components/Tap';
 import { NightSky } from './src/components/NightSky';
 import { Onboarding } from './src/components/Onboarding';
 import { OwlAvatar } from './src/components/OwlAvatar';
@@ -136,24 +137,24 @@ function Shell() {
               <Text style={styles.tagline}>Live it! SURV it!</Text>
             </View>
           </View>
-          <Pressable style={styles.meterMini} onPress={() => setTab('profile')}>
+          <Tap style={styles.meterMini} onPress={() => setTab('profile')}>
             <View style={[styles.meterMiniFill, { width: `${me.clout}%` }]} />
             <Text style={styles.meterMiniText}>{Math.round(me.clout)}%</Text>
-          </Pressable>
+          </Tap>
         </View>
 
         {dueForMe > 0 && !nudgeDismissed && tab !== 'profile' && (
           <View style={styles.nudge}>
             <Ionicons name="notifications" size={15} color={colors.navy} />
-            <Pressable style={{ flex: 1 }} onPress={() => setTab('profile')}>
+            <Tap style={{ flex: 1 }} onPress={() => setTab('profile')}>
               <Text style={styles.nudgeText}>
                 {dueForMe === 1 ? 'A decision needs' : `${dueForMe} decisions need`} your verdict —
                 your Nest wants to know how it went
               </Text>
-            </Pressable>
-            <Pressable onPress={() => setNudgeDismissed(true)} hitSlop={10}>
+            </Tap>
+            <Tap onPress={() => setNudgeDismissed(true)} hitSlop={10}>
               <Ionicons name="close" size={15} color={colors.navy} />
-            </Pressable>
+            </Tap>
           </View>
         )}
 
@@ -191,7 +192,7 @@ function Shell() {
           {TABS.map(([key, icon, label]) => {
             const active = tab === key;
             return (
-              <Pressable key={key} style={styles.tab} onPress={() => setTab(key)}>
+              <Tap key={key} style={styles.tab} onPress={() => setTab(key)}>
                 {key === 'home' ? (
                   <Image
                     source={require('./assets/icons/tree.png')}
@@ -219,7 +220,7 @@ function Shell() {
                     <Text style={styles.badgeText}>{dueForMe}</Text>
                   </View>
                 )}
-              </Pressable>
+              </Tap>
             );
           })}
         </View>
@@ -254,7 +255,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { bro
         <Text style={{ fontSize: 44 }}>🦉</Text>
         <Text style={bootStyles.title}>A twig snapped.</Text>
         <Text style={bootStyles.body}>Something went wrong — one tap brings the Tree back.</Text>
-        <Pressable
+        <Tap
           style={bootStyles.btn}
           onPress={() => {
             try {
@@ -266,7 +267,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { bro
           }}
         >
           <Text style={bootStyles.btnText}>Reload SURV</Text>
-        </Pressable>
+        </Tap>
       </View>
     );
   }

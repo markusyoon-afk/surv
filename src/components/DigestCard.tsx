@@ -2,7 +2,8 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Tap } from './Tap';
 import { buildDigest } from '../engine/digest';
 import { useSurv } from '../engine/store';
 import { colors, radius } from '../theme';
@@ -20,12 +21,12 @@ export function DigestCard({ onGoToProfile }: { onGoToProfile: () => void }) {
     <View style={styles.card}>
       <View style={styles.headerRow}>
         <Text style={styles.title}>THIS WEEK IN YOUR NEST</Text>
-        <Pressable onPress={() => setDismissed(true)} hitSlop={10}>
+        <Tap onPress={() => setDismissed(true)} hitSlop={10}>
           <Ionicons name="close" size={15} color={colors.star} />
-        </Pressable>
+        </Tap>
       </View>
       {items.map((item, i) => (
-        <Pressable
+        <Tap
           key={i}
           style={styles.row}
           onPress={item.target === 'profile' ? onGoToProfile : undefined}
@@ -36,7 +37,7 @@ export function DigestCard({ onGoToProfile }: { onGoToProfile: () => void }) {
             color={colors.sage}
           />
           <Text style={styles.text}>{item.text}</Text>
-        </Pressable>
+        </Tap>
       ))}
     </View>
   );

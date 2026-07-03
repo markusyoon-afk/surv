@@ -5,13 +5,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   PanResponder,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { Tap } from '../components/Tap';
 import { buildDrafts, categoryQuestion, type SurvDraft } from '../engine/drafts';
 import { suggestOptions, type SuggestContext } from '../engine/suggest';
 import { useSurv } from '../engine/store';
@@ -74,20 +74,27 @@ export function NewSurv({
   const suggestFor = async (q: string, lockCategory?: Category, page = false) => {
     setBusy(true);
     try {
-      const baseExclude = page ? [...rejected, ...shown, ...options.map((o) => o.label)] : rejected;
+      const current = options.filter((o) => o.source !== 'user').map((o) => o.label);
+      const baseExclude = page ? [...rejected, ...shown, ...current] : rejected;
       let result = await suggestOptions(q, me, 3, {
         ...suggestCtx(),
         categoryHint: lockCategory,
         excludeLabels: baseExclude,
       });
       if (page && result.options.length < 3) {
-        // Pool exhausted — wrap around and start the cycle fresh.
+        // Pool exhausted — restart the cycle, but never re-serve what's on
+        // screen right now: every press must visibly change the options.
         setShown([]);
-        result = await suggestOptions(q, me, 3, {
+        const wrap = await suggestOptions(q, me, 3, {
           ...suggestCtx(),
           categoryHint: lockCategory,
-          excludeLabels: rejected,
+          excludeLabels: [...rejected, ...current],
         });
+        const have = new Set(result.options.map((o) => o.label));
+        result = {
+          ...wrap,
+          options: [...result.options, ...wrap.options.filter((o) => !have.has(o.label))].slice(0, 3),
+        };
       }
       setCategory(lockCategory ?? result.category);
       setShown((prev) => (page ? [...prev, ...result.options.map((o) => o.label)] : result.options.map((o) => o.label)));
@@ -100,7 +107,16 @@ export function NewSurv({
     }
   };
 
-  const suggest = () => suggestFor(question, categoryPicked ? category : undefined, true);
+  /** ✨ always delivers: no question yet → draft one for the category first. */
+  const suggest = () => {
+    let q = question;
+    if (q.trim().length < 8) {
+      const mySurvs = survs.filter((s) => s.askerId === me.id);
+      q = categoryQuestion(category, mySurvs, new Date(), geo?.city);
+      setQuestion(q);
+    }
+    return suggestFor(q, categoryPicked ? category : undefined, true);
+  };
 
   /** X on a suggestion rejects it — and a fresh idea takes its place. */
   const rejectOption = async (opt: SurvOption) => {
@@ -230,16 +246,16 @@ export function NewSurv({
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.ideasStrip}>
             {buildDrafts(survs.filter((s) => s.askerId === me.id), me, new Date(), 4, calendarEvents, healthConnected).map((d) => (
-              <Pressable key={d.id} style={styles.ideaCard} onPress={() => applyDraft(d)}>
+              <Tap key={d.id} style={styles.ideaCard} onPress={() => applyDraft(d)}>
                 <Text style={styles.ideaReason}>⚡ {d.reason}</Text>
                 <Text style={styles.ideaQ} numberOfLines={3}>{d.question}</Text>
-              </Pressable>
+              </Tap>
             ))}
             {TRENDING_SURVS.map((t) => (
-              <Pressable key={t.id} style={styles.ideaCard} onPress={() => applyTrending(t)}>
+              <Tap key={t.id} style={styles.ideaCard} onPress={() => applyTrending(t)}>
                 <Text style={styles.ideaReason}>🔥 Trending · {t.reuses}×</Text>
                 <Text style={styles.ideaQ} numberOfLines={3}>{t.question}</Text>
-              </Pressable>
+              </Tap>
             ))}
           </ScrollView>
         </View>
@@ -257,18 +273,18 @@ export function NewSurv({
 
         <View style={styles.rowBetween}>
           <Text style={styles.label}>Pick a category</Text>
-          <Pressable style={styles.geoChip} onPress={locate} disabled={locating}>
+          <Tap style={styles.geoChip} onPress={locate} disabled={locating}>
             <Text style={styles.geoChipText}>
               {locating ? '📍 Locating…' : geo ? `📍 ${geo.city ?? 'Located'}` : '📍 Use my location'}
             </Text>
-          </Pressable>
+          </Tap>
         </View>
         <View style={styles.catGrid}>
           {CATEGORIES.map((c) => {
             const on = category === c;
             const accent = CATEGORY_COLORS[c];
             return (
-              <Pressable
+              <Tap
                 key={c}
                 style={[
                   styles.catTile,
@@ -282,7 +298,7 @@ export function NewSurv({
                   color={on ? colors.white : accent}
                 />
                 <Text style={[styles.catTileText, on && styles.catTileTextOn]}>{CATEGORY_LABELS[c]}</Text>
-              </Pressable>
+              </Tap>
             );
           })}
         </View>
@@ -290,25 +306,25 @@ export function NewSurv({
 
         <View style={styles.rowBetween}>
           <Text style={styles.label}>Options ({options.length}/4)</Text>
-          <Pressable style={styles.suggestBtn} onPress={suggest} disabled={busy || question.trim().length < 8}>
+          <Tap style={styles.suggestBtn} onPress={suggest} disabled={busy}>
             {busy ? (
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
               <Text style={styles.suggestText}>✨ Suggest options</Text>
             )}
-          </Pressable>
+          </Tap>
         </View>
         {options.map((opt) => (
           <View key={opt.id} style={styles.option}>
-            <Pressable style={{ flex: 1 }} onPress={() => editOption(opt)}>
+            <Tap style={{ flex: 1 }} onPress={() => editOption(opt)}>
               <Text style={styles.optionText}>{opt.label}</Text>
               <Text style={styles.optionWhy}>
                 {opt.why ? `${sourceIcon(opt.source)} ${opt.why} · ` : ''}tap to edit
               </Text>
-            </Pressable>
-            <Pressable onPress={() => rejectOption(opt)} hitSlop={8}>
+            </Tap>
+            <Tap onPress={() => rejectOption(opt)} hitSlop={8}>
               <Ionicons name="refresh-circle" size={22} color={colors.inkFaint} />
-            </Pressable>
+            </Tap>
           </View>
         ))}
         {options.length < 4 && (
@@ -321,9 +337,9 @@ export function NewSurv({
               onChangeText={setManual}
               onSubmitEditing={addManual}
             />
-            <Pressable style={styles.addBtn} onPress={addManual}>
+            <Tap style={styles.addBtn} onPress={addManual}>
               <Text style={styles.addBtnText}>Add</Text>
-            </Pressable>
+            </Tap>
           </View>
         )}
 
@@ -371,9 +387,9 @@ export function NewSurv({
             ))}
         </View>
 
-        <Pressable style={[styles.survit, !canPost && styles.survitOff]} onPress={post}>
+        <Tap style={[styles.survit, !canPost && styles.survitOff]} onPress={post}>
           <Text style={styles.survitText}>SURVit!</Text>
-        </Pressable>
+        </Tap>
       </View>
     </ScrollView>
   );
@@ -450,9 +466,9 @@ function DurationSlider({ valueMs, onChange }: { valueMs: number; onChange: (ms:
 
 function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
   return (
-    <Pressable style={[styles.chip, on && styles.chipOn]} onPress={onPress}>
+    <Tap style={[styles.chip, on && styles.chipOn]} onPress={onPress}>
       <Text style={[styles.chipText, on && styles.chipTextOn]}>{label}</Text>
-    </Pressable>
+    </Tap>
   );
 }
 

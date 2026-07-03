@@ -3,7 +3,8 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Tap } from '../components/Tap';
 import { OwlAvatar, stageForClout } from '../components/OwlAvatar';
 import { activeArenaSurvs, type ArenaSurv } from '../engine/arena';
 import { getPopulation, STAR_AVATARS } from '../engine/population';
@@ -82,7 +83,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
           const myVote = arenaVotes[s.id];
           const open = expandedId === s.id;
           return (
-            <Pressable
+            <Tap
               key={s.id}
               style={styles.survRow}
               onPress={() => setExpandedId(open ? null : s.id)}
@@ -98,13 +99,13 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
                 {open && !myVote && (
                   <View style={styles.voteRow}>
                     {s.options.map((opt) => (
-                      <Pressable
+                      <Tap
                         key={opt.id}
                         style={styles.voteChip}
                         onPress={() => voteArena(s.id, opt.id)}
                       >
                         <Text style={styles.voteChipText}>{opt.label}</Text>
-                      </Pressable>
+                      </Tap>
                     ))}
                   </View>
                 )}
@@ -115,7 +116,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
                 )}
               </View>
               <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={colors.inkFaint} />
-            </Pressable>
+            </Tap>
           );
         })}
       </View>
@@ -124,7 +125,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
         <View style={styles.card}>
           <Text style={styles.title}>🌳 Live from your Tree</Text>
           {myBest.map((s) => (
-            <Pressable key={s.id} style={styles.survRow} onPress={() => onOpen(s)}>
+            <Tap key={s.id} style={styles.survRow} onPress={() => onOpen(s)}>
               <Ionicons name="leaf" size={14} color={colors.owlDeep} style={{ marginTop: 3 }} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.survQ} numberOfLines={2}>{s.question}</Text>
@@ -134,7 +135,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={14} color={colors.inkFaint} />
-            </Pressable>
+            </Tap>
           ))}
         </View>
       )}
@@ -168,7 +169,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
                 (perched.includes(row.user.id) ? (
                   <Text style={styles.perchedMark}>🪶</Text>
                 ) : (
-                  <Pressable
+                  <Tap
                     style={styles.recruitBtn}
                     onPress={() => {
                       perchSage(row.user);
@@ -176,7 +177,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
                     }}
                   >
                     <Text style={styles.perchBtnText}>🪶 Perch</Text>
-                  </Pressable>
+                  </Tap>
                 ))}
             </View>
           );

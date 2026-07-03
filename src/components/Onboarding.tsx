@@ -1,7 +1,8 @@
 // First-run explainer — three beats of the SURV loop, then get out of the way.
 
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Tap } from './Tap';
 import { colors, radius } from '../theme';
 
 const BEATS: Array<[string, string, string]> = [
@@ -44,12 +45,12 @@ export function Onboarding({
           placeholder="Your name"
           placeholderTextColor={colors.inkFaint}
         />
-        <Pressable
+        <Tap
           style={[styles.cta, !name.trim() && { opacity: 0.45 }]}
           onPress={() => name.trim() && onDone(name)}
         >
           <Text style={styles.ctaText}>Let’s SURV</Text>
-        </Pressable>
+        </Tap>
       </View>
     </View>
   );

@@ -3,7 +3,8 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Tap } from './Tap';
 import { OwlAvatar } from './OwlAvatar';
 import { activeArenaSurvs, arenaStats, type ArenaSurv } from '../engine/arena';
 import { formatRemaining } from '../engine/sage';
@@ -39,20 +40,20 @@ export function ArenaFeed() {
         <Text style={styles.tickerText}>
           {stats.activeSages.toLocaleString()} sages active · {stats.newThisHour.toLocaleString()} new SURVs/hr · {stats.liveNow.toLocaleString()} live
         </Text>
-        <Pressable onPress={() => setRefreshKey((k) => k + 1)} hitSlop={8}>
+        <Tap onPress={() => setRefreshKey((k) => k + 1)} hitSlop={8}>
           <Ionicons name="refresh" size={14} color={colors.star} />
-        </Pressable>
+        </Tap>
       </View>
       <View style={styles.sortRow}>
         {([['hot', '🔥 Hottest'], ['ending', '⏳ Ending soon'], ['foryou', '🎯 For you']] as Array<[SortMode, string]>).map(
           ([mode, label]) => (
-            <Pressable
+            <Tap
               key={mode}
               style={[styles.sortChip, sort === mode && styles.sortChipOn]}
               onPress={() => setSort(mode)}
             >
               <Text style={[styles.sortText, sort === mode && styles.sortTextOn]}>{label}</Text>
-            </Pressable>
+            </Tap>
           ),
         )}
       </View>
@@ -130,9 +131,9 @@ function ArenaCard({
             <Text style={styles.barPct}>{share.toFixed(1)}%</Text>
           </View>
         ) : (
-          <Pressable key={opt.id} style={styles.voteBtn} onPress={() => onVote(surv.id, opt.id)}>
+          <Tap key={opt.id} style={styles.voteBtn} onPress={() => onVote(surv.id, opt.id)}>
             <Text style={styles.voteText}>{opt.label}</Text>
-          </Pressable>
+          </Tap>
         );
       })}
       {voted && <Text style={styles.votedNote}>Vote in — you’ll hear how it turned out 🦉</Text>}

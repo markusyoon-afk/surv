@@ -126,17 +126,59 @@ const NEST_SIGNAL_MOCK: Partial<Record<Category, string[]>> = {
   Travel: ['The cabin trip your IG friends posted about'],
 };
 
+// Nine per category — ✨ Suggest pages through them three at a time, so every
+// press delivers a full fresh batch before the cycle wraps.
 const GENERIC_TEMPLATES: Record<Category, string[]> = {
-  Food: ['Cook what’s already in the fridge', 'Order the usual', 'Try somewhere new'],
-  Shopping: ['Buy it now', 'Wait for a sale', 'Get the cheaper alternative'],
-  Living: ['Go for it', 'Sleep on it a week', 'Ask your Nest in person first'],
-  Entertainment: ['Stay in and stream', 'Go out for it', 'Save it for the weekend'],
-  Sports: ['Play / start them', 'Sit this one out', 'Decide game-time'],
-  Tech: ['Upgrade now', 'Wait for the next release', 'Buy refurbished'],
-  Travel: ['Book it', 'Pick somewhere closer', 'Push it a month'],
-  Style: ['Make the change', 'Keep it classic', 'Get a second opinion in person'],
-  Work: ['Address it head-on', 'Give it two weeks', 'Loop in someone you trust'],
-  Relationships: ['Reach out first', 'Give it space', 'Plan something together'],
+  Food: [
+    'Cook what’s already in the fridge', 'Order the usual', 'Try somewhere new',
+    'Meal-prep two days at once', 'Grab something light', 'Split an order with someone',
+    'Breakfast-for-dinner night', 'Make it a picnic', 'Go where the group votes',
+  ],
+  Shopping: [
+    'Buy it now', 'Wait for a sale', 'Get the cheaper alternative',
+    'Set a price alert and hold', 'Check resale first', 'Buy the mid-tier option',
+    'Rent or borrow it once', 'Ask your Nest who owns one', 'Replace one thing it makes obsolete',
+  ],
+  Living: [
+    'Go for it', 'Sleep on it a week', 'Ask your Nest in person first',
+    'Do the 10-minute version now', 'Set a deadline and decide then', 'Try it for one week',
+    'Make the pros/cons list tonight', 'Put it on the calendar', 'Hand it off to someone better at it',
+  ],
+  Entertainment: [
+    'Stay in and stream', 'Go out for it', 'Save it for the weekend',
+    'Host at your place', 'Game night instead', 'Rewatch a classic',
+    'Catch the live version', 'Double-feature it', 'Let the group pick',
+  ],
+  Sports: [
+    'Play / start them', 'Sit this one out', 'Decide game-time',
+    'Light session — just show up', 'Train with a friend', 'Take the class instead of solo',
+    'Morning slot before it fills', 'Active-recovery walk instead', 'Track it and decide next week',
+  ],
+  Tech: [
+    'Upgrade now', 'Wait for the next release', 'Buy refurbished',
+    'Trade in what you have', 'Buy last year’s model', 'Wait for the reviews',
+    'Test it in-store first', 'Fix the one you’ve got', 'Stretch the budget once — keep it 5 years',
+  ],
+  Travel: [
+    'Book it', 'Pick somewhere closer', 'Push it a month',
+    'Day-trip it first', 'Go off-season for half price', 'Split a rental with friends',
+    'Redeem the points', 'Same place, longer stay', 'New city, short hop',
+  ],
+  Style: [
+    'Make the change', 'Keep it classic', 'Get a second opinion in person',
+    'Start with one piece', 'Thrift the look first', 'Commit to it for a month',
+    'Ask your most stylish friend', 'Save it for a big occasion', 'Tailor what you already own',
+  ],
+  Work: [
+    'Address it head-on', 'Give it two weeks', 'Loop in someone you trust',
+    'Write it out, then decide', 'Ask for 24 hours', 'Bring it to the next 1:1',
+    'Do the smallest next step today', 'Get a mentor’s read first', 'Say no this time',
+  ],
+  Relationships: [
+    'Reach out first', 'Give it space', 'Plan something together',
+    'Call, don’t text', 'Send the first message now', 'Make it a standing thing',
+    'Invite them to the next hangout', 'Keep it one-on-one', 'Write the note by hand',
+  ],
 };
 
 /** The highest category-SAGE person who shares a Nest with you — your influencer. */

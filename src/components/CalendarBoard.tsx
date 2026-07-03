@@ -3,7 +3,8 @@
 // → 🕊️ post it straight to your Tree or open it in the composer.
 
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { Tap } from './Tap';
 import { ACTIVITY_LABEL, eventDraftContent, routineDraft, type SurvDraft } from '../engine/drafts';
 import { DEFAULT_ROUTINE, whenLabel, type Activity, type CalEvent } from '../engine/schedule';
 import { useSurv } from '../engine/store';
@@ -106,7 +107,7 @@ export function CalendarBoard({ onDraft }: { onDraft: (draft: SurvDraft) => void
           const n = eventsOn(d.getTime()).length;
           const active = i === selected;
           return (
-            <Pressable
+            <Tap
               key={d.getTime()}
               style={[styles.dayCell, active && styles.dayCellOn]}
               onPress={() => {
@@ -123,7 +124,7 @@ export function CalendarBoard({ onDraft }: { onDraft: (draft: SurvDraft) => void
                   <View key={k} style={styles.dot} />
                 ))}
               </View>
-            </Pressable>
+            </Tap>
           );
         })}
       </View>
@@ -133,7 +134,7 @@ export function CalendarBoard({ onDraft }: { onDraft: (draft: SurvDraft) => void
         const posted = postedRow === row.key;
         return (
           <View key={row.key} style={[styles.row, open && styles.rowOpen]}>
-            <Pressable
+            <Tap
               style={styles.rowHead}
               onPress={() => setOpenRow(open ? null : row.key)}
               hitSlop={4}
@@ -145,7 +146,7 @@ export function CalendarBoard({ onDraft }: { onDraft: (draft: SurvDraft) => void
                 {row.kind === 'event' ? `📅 ${row.title}` : row.title}
               </Text>
               <Text style={styles.chev}>{open ? '▾' : '▸'}</Text>
-            </Pressable>
+            </Tap>
             {open && (
               <View style={styles.rowBody}>
                 <Text style={styles.draftQ}>{row.draft.question}</Text>
@@ -158,12 +159,12 @@ export function CalendarBoard({ onDraft }: { onDraft: (draft: SurvDraft) => void
                   <Text style={styles.postedNote}>🕊️ Launched to your Tree — advisors incoming</Text>
                 ) : (
                   <View style={styles.btnRow}>
-                    <Pressable style={styles.postBtn} onPress={() => post(row)} hitSlop={6}>
+                    <Tap style={styles.postBtn} onPress={() => post(row)} hitSlop={6}>
                       <Text style={styles.postBtnText}>🕊️ Post SURV now</Text>
-                    </Pressable>
-                    <Pressable onPress={() => onDraft(row.draft)} hitSlop={8}>
+                    </Tap>
+                    <Tap onPress={() => onDraft(row.draft)} hitSlop={8}>
                       <Text style={styles.editLink}>edit in composer →</Text>
-                    </Pressable>
+                    </Tap>
                   </View>
                 )}
               </View>

@@ -3,7 +3,8 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Tap } from '../components/Tap';
 import { NestFrame } from '../components/NestFrame';
 import { OwlAvatar } from '../components/OwlAvatar';
 import { suggestConnections } from '../engine/connections';
@@ -48,9 +49,9 @@ export function Nests() {
       contentContainerStyle={{ padding: 14, paddingBottom: 100 }}
       keyboardShouldPersistTaps="handled"
     >
-      <Pressable style={styles.newBtn} onPress={() => setCreating(!creating)}>
+      <Tap style={styles.newBtn} onPress={() => setCreating(!creating)}>
         <Text style={styles.newBtnText}>{creating ? '✕ Cancel' : '＋ New Nest'}</Text>
-      </Pressable>
+      </Tap>
 
       {creating && (
         <View style={styles.card}>
@@ -63,13 +64,13 @@ export function Nests() {
           />
           <View style={styles.emojiRow}>
             {NEST_EMOJI.map((e) => (
-              <Pressable
+              <Tap
                 key={e}
                 style={[styles.emojiChip, emoji === e && styles.emojiChipOn]}
                 onPress={() => setEmoji(e)}
               >
                 <Text style={{ fontSize: 20 }}>{e}</Text>
-              </Pressable>
+              </Tap>
             ))}
           </View>
           <Text style={styles.label}>Who’s in it (optional — friends join via shared SURVs)</Text>
@@ -79,7 +80,7 @@ export function Nests() {
               .map((u) => {
                 const on = memberIds.includes(u.id);
                 return (
-                  <Pressable
+                  <Tap
                     key={u.id}
                     style={[styles.memberChip, on && styles.memberChipOn]}
                     onPress={() =>
@@ -91,16 +92,16 @@ export function Nests() {
                     <Text style={[styles.memberChipText, on && styles.memberChipTextOn]}>
                       {u.avatar} {u.name} {on ? '✓' : ''}
                     </Text>
-                  </Pressable>
+                  </Tap>
                 );
               })}
           </View>
-          <Pressable
+          <Tap
             style={[styles.createBtn, !name.trim() && { opacity: 0.55 }]}
             onPress={submit}
           >
             <Text style={styles.createBtnText}>Create Nest</Text>
-          </Pressable>
+          </Tap>
           {error && <Text style={styles.error}>{error}</Text>}
         </View>
       )}
@@ -130,7 +131,7 @@ export function Nests() {
                       {top ? `${top.category} sage ${top.value}%` : 'No track record yet'}
                     </Text>
                   </View>
-                  <Pressable
+                  <Tap
                     style={[styles.tierPill, !canCycle && { opacity: 0.75 }]}
                     onPress={canCycle ? () => cycleTier(nest.id, m.userId) : undefined}
                   >
@@ -138,7 +139,7 @@ export function Nests() {
                       {TIER_LABEL[m.tier]}
                       {canCycle ? ' ⟳' : ''}
                     </Text>
-                  </Pressable>
+                  </Tap>
                   <View style={styles.cloutPill}>
                     <Text style={styles.cloutText}>{Math.round(user.clout)}%</Text>
                   </View>
@@ -176,7 +177,7 @@ export function Nests() {
                   </Text>
                 </View>
               </View>
-              <Pressable
+              <Tap
                 style={styles.addBtn}
                 onPress={() => {
                   addToNest(myFirstNest.id, user.id);
@@ -185,7 +186,7 @@ export function Nests() {
               >
                 <Ionicons name="person-add" size={13} color={colors.white} />
                 <Text style={styles.addBtnText}>Add</Text>
-              </Pressable>
+              </Tap>
             </View>
           ))}
           {added && <Text style={styles.addedNote}>✓ {added}</Text>}

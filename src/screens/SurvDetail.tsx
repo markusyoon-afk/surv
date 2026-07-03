@@ -2,7 +2,8 @@
 // and — for your own expired SURVs — the "Act on it" step.
 
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Tap } from '../components/Tap';
 import { SageBar } from '../components/SurvCard';
 import { displayWeight, formatRemaining, msRemaining, tally, winningOption } from '../engine/sage';
 import { useSurv } from '../engine/store';
@@ -72,9 +73,9 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
                   {surv.category} · {live ? `Expires in ${formatRemaining(msRemaining(surv))}` : 'Closed'}
                 </Text>
               </View>
-              <Pressable onPress={onClose} hitSlop={12}>
+              <Tap onPress={onClose} hitSlop={12}>
                 <Text style={styles.close}>✕</Text>
-              </Pressable>
+              </Tap>
             </View>
 
             <Text style={styles.question}>{surv.question}</Text>
@@ -83,10 +84,10 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
               <>
                 <Text style={styles.section}>Cast your vote</Text>
                 {surv.options.map((opt) => (
-                  <Pressable key={opt.id} style={styles.voteBtn} onPress={() => castVote(surv.id, opt.id)}>
+                  <Tap key={opt.id} style={styles.voteBtn} onPress={() => castVote(surv.id, opt.id)}>
                     <Text style={styles.voteText}>{opt.label}</Text>
                     {opt.why ? <Text style={styles.voteWhy}>{opt.why}</Text> : null}
-                  </Pressable>
+                  </Tap>
                 ))}
               </>
             ) : (
@@ -105,13 +106,13 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
             )}
 
             {isMine && live && (
-              <Pressable style={styles.extendBtn} onPress={() => extendSurv(surv.id, 2 * HOUR)}>
+              <Tap style={styles.extendBtn} onPress={() => extendSurv(surv.id, 2 * HOUR)}>
                 <Text style={styles.extendText}>🪽 Extend the flight +2 hrs</Text>
-              </Pressable>
+              </Tap>
             )}
 
             {isMine && (
-              <Pressable
+              <Tap
                 style={styles.shareBtn}
                 onPress={() => {
                   const url = survShareUrl(surv, me.name);
@@ -123,11 +124,11 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
                 }}
               >
                 <Text style={styles.shareText}>📤 Share with your Nest</Text>
-              </Pressable>
+              </Tap>
             )}
 
             {!isMine && myVote && (
-              <Pressable
+              <Tap
                 style={styles.shareBtn}
                 onPress={() => {
                   const opt = surv.options.find((o) => o.id === myVote.optionId);
@@ -140,7 +141,7 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
                 }}
               >
                 <Text style={styles.shareText}>📨 Send my vote to {asker?.name}</Text>
-              </Pressable>
+              </Tap>
             )}
             {shareNote && <Text style={styles.hint}>{shareNote}</Text>}
 
@@ -151,9 +152,9 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
                   <Text style={styles.hint}>Your sphere says: {winner.label} ({winner.pct.toFixed(1)}%)</Text>
                 )}
                 {surv.options.map((opt) => (
-                  <Pressable key={opt.id} style={styles.actBtn} onPress={() => actOn(surv.id, opt.id)}>
+                  <Tap key={opt.id} style={styles.actBtn} onPress={() => actOn(surv.id, opt.id)}>
                     <Text style={styles.actText}>I went with: {opt.label}</Text>
-                  </Pressable>
+                  </Tap>
                 ))}
               </>
             )}
@@ -218,7 +219,7 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
                   setComment('');
                 }}
               />
-              <Pressable
+              <Tap
                 style={styles.commentSend}
                 onPress={() => {
                   addComment(surv.id, comment);
@@ -226,7 +227,7 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
                 }}
               >
                 <Text style={styles.commentSendText}>Post</Text>
-              </Pressable>
+              </Tap>
             </View>
           </ScrollView>
         </View>

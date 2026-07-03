@@ -7,13 +7,13 @@ import {
   Animated,
   PanResponder,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
+import { Tap } from '../components/Tap';
 import { AVATAR_STAGES, nextStage, OWL_ACCESSORIES, OWL_PALETTES, OWL_RINGS, OWL_SHAPES, OwlAvatar, stageForClout } from '../components/OwlAvatar';
 import { Image } from 'react-native';
 import { CalendarBoard } from '../components/CalendarBoard';
@@ -50,7 +50,7 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
             <Text style={styles.name}>{me.name}</Text>
             <Text style={styles.bio}>{me.bio}</Text>
           </View>
-          <Pressable
+          <Tap
             style={styles.inviteBtn}
             onPress={() =>
               shareText(
@@ -59,7 +59,7 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
             }
           >
             <Text style={styles.inviteBtnText}>＋ Invite</Text>
-          </Pressable>
+          </Tap>
         </View>
         <Text style={styles.section}>SAGEmeter</Text>
         <View style={styles.meterTrack}>
@@ -156,7 +156,7 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
           {CONNECTORS.map(([id, label]) => {
             const on = me.connectors.includes(id);
             return (
-              <Pressable
+              <Tap
                 key={id}
                 style={[styles.connector, on && styles.connectorOn]}
                 onPress={() => toggleConnector(id)}
@@ -164,7 +164,7 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
                 <Text style={[styles.connectorText, on && styles.connectorTextOn]}>
                   {label} {on ? '✓' : ''}
                 </Text>
-              </Pressable>
+              </Tap>
             );
           })}
           <HealthToggle />
@@ -182,25 +182,25 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
         <Text style={styles.customLabel}>Owl color</Text>
         <View style={styles.connectors}>
           {OWL_PALETTES.map((p) => (
-            <Pressable
+            <Tap
               key={p.id}
               style={[styles.swatch, (owlStyle.palette ?? 'g') === p.id && styles.swatchOn]}
               onPress={() => setOwlStyle({ ...owlStyle, palette: p.id })}
             >
               <Text style={styles.swatchText}>{p.label}</Text>
-            </Pressable>
+            </Tap>
           ))}
         </View>
         <Text style={styles.customLabel}>Owl shape</Text>
         <View style={styles.connectors}>
           {OWL_SHAPES.map((s) => (
-            <Pressable
+            <Tap
               key={s.id}
               style={[styles.swatch, (owlStyle.shape ?? 'round') === s.id && styles.swatchOn]}
               onPress={() => setOwlStyle({ ...owlStyle, shape: s.id })}
             >
               <Text style={styles.swatchText}>{s.label}</Text>
-            </Pressable>
+            </Tap>
           ))}
         </View>
         <Text style={styles.customLabel}>Ring</Text>
@@ -209,13 +209,13 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
             const locked = me.clout < r.min;
             const on = (owlStyle.ring ?? 'none') === r.id;
             return (
-              <Pressable
+              <Tap
                 key={r.id}
                 style={[styles.swatch, { borderColor: r.color === 'transparent' ? colors.chip : r.color }, on && styles.swatchOn, locked && { opacity: 0.35 }]}
                 onPress={() => !locked && setOwlStyle({ ...owlStyle, ring: r.id })}
               >
                 <Text style={styles.swatchText}>{locked ? `🔒 ${r.min}%` : r.label}</Text>
-              </Pressable>
+              </Tap>
             );
           })}
         </View>
@@ -225,7 +225,7 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
             const locked = me.clout < a.min;
             const on = (owlStyle.accessory ?? 'none') === a.id;
             return (
-              <Pressable
+              <Tap
                 key={a.id}
                 style={[styles.swatch, on && styles.swatchOn, locked && { opacity: 0.35 }]}
                 onPress={() => !locked && setOwlStyle({ ...owlStyle, accessory: a.id })}
@@ -233,7 +233,7 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
                 <Text style={styles.swatchText}>
                   {locked ? `🔒 ${a.min}%` : `${a.emoji} ${a.label}`.trim()}
                 </Text>
-              </Pressable>
+              </Tap>
             );
           })}
         </View>
@@ -245,9 +245,9 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
 
       <ClaudeSettings />
 
-      <Pressable style={styles.reset} onPress={resetDemo}>
+      <Tap style={styles.reset} onPress={resetDemo}>
         <Text style={styles.resetText}>Reset demo data</Text>
-      </Pressable>
+      </Tap>
     </ScrollView>
   );
 }
@@ -289,9 +289,9 @@ function ScheduleSettings({ onDraft }: { onDraft: (draft: SurvDraft) => void }) 
         onChangeText={setIcs}
         multiline
       />
-      <Pressable style={[styles.claudeSave, { alignSelf: 'flex-start', paddingVertical: 8 }]} onPress={doImport}>
+      <Tap style={[styles.claudeSave, { alignSelf: 'flex-start', paddingVertical: 8 }]} onPress={doImport}>
         <Text style={styles.claudeSaveText}>Import calendar</Text>
-      </Pressable>
+      </Tap>
       {note && <Text style={styles.hint}>{note}</Text>}
     </View>
   );
@@ -300,14 +300,14 @@ function ScheduleSettings({ onDraft }: { onDraft: (draft: SurvDraft) => void }) 
 function HealthToggle() {
   const { healthConnected, setHealthConnected } = useSurv();
   return (
-    <Pressable
+    <Tap
       style={[styles.connector, healthConnected && styles.connectorOn]}
       onPress={() => setHealthConnected(!healthConnected)}
     >
       <Text style={[styles.connectorText, healthConnected && styles.connectorTextOn]}>
         ❤️ Health (Apple/Google) {healthConnected ? '✓' : ''}
       </Text>
-    </Pressable>
+    </Tap>
   );
 }
 
@@ -318,10 +318,10 @@ function SageAlgorithmCard() {
   if (!/markus/i.test(me.name)) return null;
   return (
     <View style={styles.card}>
-      <Pressable style={styles.algoHeader} onPress={() => setOpen(!open)}>
+      <Tap style={styles.algoHeader} onPress={() => setOpen(!open)}>
         <Text style={styles.section}>How the SAGEmeter works (dev only)</Text>
         <Text style={styles.algoToggle}>{open ? 'hide' : 'show'}</Text>
-      </Pressable>
+      </Tap>
       {open && (
         <>
           <Text style={styles.algoFormula}>
@@ -377,9 +377,9 @@ function NudgeSettings() {
           <Text style={styles.hint}>
             Get pinged when a countdown ends and a decision is waiting on you.
           </Text>
-          <Pressable style={styles.claudeRemove} onPress={enable}>
+          <Tap style={styles.claudeRemove} onPress={enable}>
             <Text style={styles.claudeRemoveText}>Enable nudges</Text>
-          </Pressable>
+          </Tap>
         </>
       )}
     </View>
@@ -421,9 +421,9 @@ function ClaudeSettings() {
           <Text style={styles.hint}>
             ✨ Claude is connected — option suggestions are AI-generated on this device.
           </Text>
-          <Pressable style={styles.claudeRemove} onPress={remove}>
+          <Tap style={styles.claudeRemove} onPress={remove}>
             <Text style={styles.claudeRemoveText}>Disconnect Claude</Text>
-          </Pressable>
+          </Tap>
         </>
       ) : (
         <>
@@ -442,9 +442,9 @@ function ClaudeSettings() {
               autoCorrect={false}
               secureTextEntry
             />
-            <Pressable style={styles.claudeSave} onPress={save}>
+            <Tap style={styles.claudeSave} onPress={save}>
               <Text style={styles.claudeSaveText}>Connect</Text>
-            </Pressable>
+            </Tap>
           </View>
         </>
       )}
@@ -488,13 +488,13 @@ function VerdictCard({ survId }: { survId: string }) {
       <Text style={styles.verdictQ}>{surv.question}</Text>
       <Text style={styles.verdictA}>You went with: {acted?.label}</Text>
       <View style={styles.verdictActions}>
-        <Pressable style={[styles.verdictBtn, styles.bad]} onPress={() => grade(survId, 'bad')}>
+        <Tap style={[styles.verdictBtn, styles.bad]} onPress={() => grade(survId, 'bad')}>
           <Text style={styles.verdictBtnText}>👎 Bad call</Text>
-        </Pressable>
+        </Tap>
         <Text style={styles.swipeHint}>← swipe →</Text>
-        <Pressable style={[styles.verdictBtn, styles.good]} onPress={() => grade(survId, 'good')}>
+        <Tap style={[styles.verdictBtn, styles.good]} onPress={() => grade(survId, 'good')}>
           <Text style={styles.verdictBtnText}>👍 Good call</Text>
-        </Pressable>
+        </Tap>
       </View>
     </Animated.View>
   );
