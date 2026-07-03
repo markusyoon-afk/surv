@@ -44,7 +44,7 @@ export function NewSurv({
   initialDraft?: SurvDraft | null;
   onDraftConsumed?: () => void;
 }) {
-  const { me, users, nests, survs, geo, nearbyPlaces, requestLocation, createSurv, calendarEvents, healthConnected } = useSurv();
+  const { me, users, nests, survs, geo, nearbyPlaces, hotMedia, requestLocation, createSurv, calendarEvents, healthConnected } = useSurv();
   const [locating, setLocating] = useState(false);
   const [question, setQuestion] = useState('');
   const [category, setCategory] = useState<Category>('Living');
@@ -55,6 +55,8 @@ export function NewSurv({
   const [nestIds, setNestIds] = useState<string[]>([nests[0]?.id].filter(Boolean));
   const [busy, setBusy] = useState(false);
   const [rejected, setRejected] = useState<string[]>([]);
+  // Flight controls stay tucked away — the defaults are already optimal.
+  const [showFlight, setShowFlight] = useState(false);
   // Only lock the category into suggestions when the user actually chose it.
   const [categoryPicked, setCategoryPicked] = useState(false);
   // Labels already offered — ✨ Suggest pages through to the NEXT three.
@@ -69,6 +71,8 @@ export function NewSurv({
     nests,
     city: geo?.city,
     placesByCategory: nearbyPlaces,
+    hotShows: hotMedia.shows,
+    hotMovies: hotMedia.movies,
   });
 
   const suggestFor = async (q: string, lockCategory?: Category, page = false) => {
@@ -343,13 +347,25 @@ export function NewSurv({
           </View>
         )}
 
-        <Text style={styles.label}>Flight — {durationLabel(duration)}</Text>
-        <DurationSlider valueMs={duration} onChange={setDuration} />
-        <View style={styles.chips}>
-          {DURATIONS.map(([label, ms]) => (
-            <Chip key={label} label={label} on={duration === ms} onPress={() => setDuration(ms)} />
-          ))}
-        </View>
+        <Tap style={styles.flightRow} onPress={() => setShowFlight(!showFlight)}>
+          <Text style={styles.label}>Flight — {durationLabel(duration)}</Text>
+          <Ionicons
+            name={showFlight ? 'chevron-up' : 'chevron-down'}
+            size={15}
+            color={colors.inkSoft}
+            style={{ marginTop: 10 }}
+          />
+        </Tap>
+        {showFlight && (
+          <>
+            <DurationSlider valueMs={duration} onChange={setDuration} />
+            <View style={styles.chips}>
+              {DURATIONS.map(([label, ms]) => (
+                <Chip key={label} label={label} on={duration === ms} onPress={() => setDuration(ms)} />
+              ))}
+            </View>
+          </>
+        )}
 
         <Text style={styles.label}>Your Nest, Tree, or Forest</Text>
         <View style={styles.chips}>
@@ -550,6 +566,7 @@ const styles = StyleSheet.create({
   },
   sliderEnds: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
   sliderEndText: { color: colors.inkFaint, fontSize: 10.5, fontWeight: '600' },
+  flightRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   suggestBtn: { backgroundColor: colors.owlDeep, borderRadius: radius.chip, paddingHorizontal: 12, paddingVertical: 6, marginTop: 10 },
   suggestText: { color: colors.white, fontWeight: '700', fontSize: 12.5 },
   option: {

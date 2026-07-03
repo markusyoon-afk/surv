@@ -159,16 +159,7 @@ function Shell() {
         )}
 
         <View style={{ flex: 1 }}>
-          {tab === 'home' && (
-            <HomeFeed
-              onOpen={setOpenSurv}
-              onDraft={(d) => {
-                setDraft(d);
-                setTab('new');
-              }}
-              onGoToProfile={() => setTab('profile')}
-            />
-          )}
+          {tab === 'home' && <HomeFeed onOpen={setOpenSurv} onGoToProfile={() => setTab('profile')} />}
           {tab === 'new' && (
             <NewSurv
               onPosted={() => setTab('home')}

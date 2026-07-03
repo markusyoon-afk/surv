@@ -562,6 +562,23 @@ test('meal context is detected from the question', () => {
   assert.equal(detectMeal('Dinner tonight — where should I go?'), 'dinner');
 });
 
+test('entertainment suggestions name actual hot titles', () => {
+  const { options } = suggestOptionsHeuristic('What should we watch tonight?', me, 3, {
+    hotShows: ['Severance', 'The Bear'],
+    hotMovies: ['Project Hail Mary'],
+  });
+  const labels = options.map((o) => o.label).join(' | ');
+  assert.ok(labels.includes('Severance') || labels.includes('The Bear'), labels);
+});
+
+test('movie-night questions pull the movie chart first', () => {
+  const { options } = suggestOptionsHeuristic('Which movie should we see this weekend?', me, 3, {
+    hotShows: ['Severance'],
+    hotMovies: ['Project Hail Mary', 'The Devil Wears Prada 2'],
+  });
+  assert.ok(/Project Hail Mary|Devil Wears Prada/.test(options[0].label), options[0].label);
+});
+
 test('a coffee question never suggests a dinner house', () => {
   const { options } = suggestOptionsHeuristic('Coffee run or brew at home this morning?', me, 3, {
     users,

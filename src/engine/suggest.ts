@@ -62,6 +62,10 @@ export interface SuggestContext {
   categoryHint?: Category;
   /** Labels already shown/rejected — never suggest these again. */
   excludeLabels?: string[];
+  /** Actual shows airing now (TVMaze) — Entertainment picks get specific. */
+  hotShows?: string[];
+  /** Actual chart-topping movies (iTunes RSS). */
+  hotMovies?: string[];
 }
 
 let optionSeq = 0;
@@ -265,6 +269,30 @@ export function suggestOptionsHeuristic(
   for (const signal of NEST_SIGNAL_MOCK[category] ?? []) {
     candidates.push({ label: signal, source: 'nest', why: 'Trending in your Nests', score: 72 });
   }
+
+  // Entertainment gets SPECIFIC: real shows airing now and real chart movies,
+  // steered by intent — "movie night" pulls the chart, "what to watch" pulls
+  // what's airing. Both outrank generic advice; nearby venues still rank first.
+  if (category === 'Entertainment') {
+    const wantsMovie = /\b(movie|film|cinema|theater|theatre)\b/i.test(question);
+    const wantsShow = /\b(series|show|episode|binge|stream|watch)\b/i.test(question);
+    (ctx?.hotShows ?? []).slice(0, 5).forEach((title, i) => {
+      candidates.push({
+        label: `Stream “${title}”`,
+        source: 'ai',
+        why: '📺 Airing this week — hot right now',
+        score: (wantsMovie && !wantsShow ? 58 : 82) - i * 5,
+      });
+    });
+    (ctx?.hotMovies ?? []).slice(0, 5).forEach((title, i) => {
+      candidates.push({
+        label: `See “${title}”`,
+        source: 'ai',
+        why: '🎬 Topping the movie charts now',
+        score: (wantsMovie ? 86 : wantsShow ? 56 : 74) - i * 5,
+      });
+    });
+  }
   const generics =
     category === 'Food' && meal !== 'any' ? MEAL_TEMPLATES[meal] : GENERIC_TEMPLATES[category];
   generics.forEach((template, i) => {
@@ -328,6 +356,10 @@ export async function suggestOptions(
             content:
               `You generate decision options for SURV, a social decision app. ` +
               `The user asks: "${question}". ` +
+              `Be SPECIFIC — name real shows, movies, venues, or events, never generic advice. ` +
+              (ctx?.hotShows?.length ? `Shows airing now: ${ctx.hotShows.slice(0, 5).join(', ')}. ` : '') +
+              (ctx?.hotMovies?.length ? `Top movies now: ${ctx.hotMovies.slice(0, 5).join(', ')}. ` : '') +
+              (ctx?.city ? `User is in ${ctx.city}. ` : '') +
               `Reply with JSON only: {"category": one of Food|Shopping|Living|Entertainment|Sports|Tech|Travel|Style|Work|Relationships, ` +
               `"options": [{"label": string (max 60 chars), "why": string (max 50 chars)}] with exactly ${count} distinct, concrete options}.`,
           },

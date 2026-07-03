@@ -17,6 +17,7 @@ import { Tap } from '../components/Tap';
 import { AVATAR_STAGES, nextStage, OWL_ACCESSORIES, OWL_PALETTES, OWL_RINGS, OWL_SHAPES, OwlAvatar, stageForClout } from '../components/OwlAvatar';
 import { Image } from 'react-native';
 import { CalendarBoard } from '../components/CalendarBoard';
+import { Collapse } from '../components/Collapse';
 import type { SurvDraft } from '../engine/drafts';
 import { useSurv } from '../engine/store';
 import { CLAUDE_KEY_STORAGE } from '../engine/suggest';
@@ -128,8 +129,10 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
       )}
 
       {graded.length > 0 && (
-        <View style={styles.card}>
-          <Text style={styles.section}>Decision history</Text>
+        <Collapse
+          title="Decision history"
+          summary={`${graded.length} graded call${graded.length === 1 ? '' : 's'}`}
+        >
           {graded.map((s) => {
             const acted = s.options.find((o) => o.id === s.actedOptionId);
             return (
@@ -142,15 +145,17 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
               </View>
             );
           })}
-        </View>
+        </Collapse>
       )}
 
-      <View style={styles.card}>
-        <Text style={styles.section}>Integrations — your life’s ecosystem</Text>
+      <Collapse
+        title="Integrations"
+        summary={`${me.connectors.length} connected · every connection makes decisions smarter`}
+      >
         <Text style={styles.hint}>
-          Every connection makes decisions smarter. Tap to connect — “yes” turns the
-          signal on. (Live OAuth per service lands with the backend; calendar and
-          location are real today, health is simulated until the device APIs connect.)
+          Tap to connect — “yes” turns the signal on. (Live OAuth per service lands with
+          the backend; calendar and location are real today, health is simulated until
+          the device APIs connect.)
         </Text>
         <View style={styles.connectors}>
           {CONNECTORS.map(([id, label]) => {
@@ -169,12 +174,11 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
           })}
           <HealthToggle />
         </View>
-      </View>
+      </Collapse>
 
       <SageAlgorithmCard />
 
-      <View style={styles.card}>
-        <Text style={styles.section}>Customize your owl</Text>
+      <Collapse title="Customize your owl" summary="Colors, shapes, gear — unlocks as you grow">
         <Text style={styles.hint}>
           The stage is earned and never changes — but your owl is yours. New gear
           unlocks as your SAGEmeter grows.
@@ -237,7 +241,7 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
             );
           })}
         </View>
-      </View>
+      </Collapse>
 
       <ScheduleSettings onDraft={onDraft} />
 
@@ -269,8 +273,7 @@ function ScheduleSettings({ onDraft }: { onDraft: (draft: SurvDraft) => void }) 
   };
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.section}>Schedule & Calendar</Text>
+    <Collapse title="Schedule & Calendar" defaultOpen>
       <Text style={styles.hint}>
         Your week, live: tap any event or rhythm block to launch the decision it raises —
         posted to your Tree in one tap.
@@ -293,7 +296,7 @@ function ScheduleSettings({ onDraft }: { onDraft: (draft: SurvDraft) => void }) 
         <Text style={styles.claudeSaveText}>Import calendar</Text>
       </Tap>
       {note && <Text style={styles.hint}>{note}</Text>}
-    </View>
+    </Collapse>
   );
 }
 
@@ -366,8 +369,10 @@ function NudgeSettings() {
   };
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.section}>Verdict nudges</Text>
+    <Collapse
+      title="Verdict nudges"
+      summary={status === 'granted' ? '🔔 On — you’ll be pinged when a verdict is due' : 'Off — tap to set up'}
+    >
       {status === 'granted' ? (
         <Text style={styles.hint}>
           🔔 Nudges are on — SURV pings you the moment a decision needs your verdict.
@@ -382,7 +387,7 @@ function NudgeSettings() {
           </Tap>
         </>
       )}
-    </View>
+    </Collapse>
   );
 }
 
@@ -414,8 +419,10 @@ function ClaudeSettings() {
   };
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.section}>Claude AI</Text>
+    <Collapse
+      title="Claude AI"
+      summary={saved ? '✨ Connected — suggestions are live AI' : 'Bring your own key for live AI options'}
+    >
       {saved ? (
         <>
           <Text style={styles.hint}>
@@ -448,7 +455,7 @@ function ClaudeSettings() {
           </View>
         </>
       )}
-    </View>
+    </Collapse>
   );
 }
 

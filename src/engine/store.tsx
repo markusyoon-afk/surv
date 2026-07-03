@@ -5,6 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchNearbyPlaces, GEO_CATEGORIES, getCurrentPosition, reverseCity, type NearbyPlace } from '../lib/geo';
+import { FALLBACK_MEDIA, fetchHotMedia, type HotMedia } from '../lib/media';
 import { publishLive, subscribeLive } from '../lib/live';
 import { arenaResult } from './arena';
 import { adviseOption, advisorRationale, avatarAt, pickAdvisor } from './population';
@@ -45,6 +46,7 @@ interface PersistedState {
   healthConnected?: boolean;
   perched?: string[];
   owlStyle?: OwlStyle;
+  hotMedia?: HotMedia;
 }
 
 export interface OwlStyle {
@@ -62,6 +64,8 @@ interface SurvStore {
   calendarEvents: CalEvent[];
   geo: GeoState | null;
   nearbyPlaces: Partial<Record<Category, NearbyPlace[]>>;
+  /** Actual airing shows + chart movies — Entertainment suggestions get specific. */
+  hotMedia: HotMedia;
   /** My votes in the public arena, survId → optionId. */
   arenaVotes: Record<string, string>;
   healthConnected: boolean;
@@ -163,6 +167,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
   const [healthConnected, setHealthConnectedState] = useState(false);
   const [perched, setPerched] = useState<string[]>([]);
   const [owlStyle, setOwlStyleState] = useState<OwlStyle>({});
+  const [hotMedia, setHotMedia] = useState<HotMedia>(FALLBACK_MEDIA);
   const [hydrated, setHydrated] = useState(false);
   const skipNextSave = useRef(false);
 
@@ -237,6 +242,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             setHealthConnectedState(saved.healthConnected ?? false);
             setPerched(saved.perched ?? []);
             setOwlStyleState(saved.owlStyle ?? {});
+            if (saved.hotMedia?.shows?.length) setHotMedia(saved.hotMedia);
           }
         }
       } catch {
@@ -286,9 +292,27 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       healthConnected,
       perched,
       owlStyle,
+      hotMedia,
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
-  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, healthConnected, perched, owlStyle, hydrated]);
+  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, healthConnected, perched, owlStyle, hotMedia, hydrated]);
+
+  // Fresh entertainment signals: refetch the airing schedule + movie chart
+  // when the cache is older than 12 hours. Failures keep the last good list.
+  useEffect(() => {
+    if (!hydrated) return;
+    if (Date.now() - hotMedia.fetchedAt < 12 * 3600_000) return;
+    let alive = true;
+    fetchHotMedia()
+      .then((m) => {
+        if (alive) setHotMedia(m);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   const store = useMemo<SurvStore>(() => {
     const userById = (id: string) => users.find((u) => u.id === id);
@@ -328,6 +352,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       calendarEvents,
       geo,
       nearbyPlaces,
+      hotMedia,
       hydrated,
       userById,
 
@@ -539,6 +564,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
               city: geo?.city,
               placesByCategory: nearbyPlaces,
               categoryHint: d.category,
+              hotShows: hotMedia.shows,
+              hotMovies: hotMedia.movies,
             }).options;
         const myNestIds = nests
           .filter((n) => n.ownerId === ME || n.members.some((m) => m.userId === ME))

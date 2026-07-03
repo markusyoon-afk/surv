@@ -7,9 +7,7 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Tap } from '../components/Tap';
 import { ArenaFeed } from '../components/ArenaFeed';
 import { DigestCard } from '../components/DigestCard';
-import { DraftCards } from '../components/DraftCards';
 import { SurvCard } from '../components/SurvCard';
-import type { SurvDraft } from '../engine/drafts';
 import { msRemaining } from '../engine/sage';
 import { useSurv } from '../engine/store';
 import type { Surv } from '../engine/types';
@@ -25,11 +23,9 @@ const RESPONDED_LABEL: Record<Responded, string> = { all: 'Any status', responde
 
 export function HomeFeed({
   onOpen,
-  onDraft,
   onGoToProfile,
 }: {
   onOpen: (surv: Surv) => void;
-  onDraft: (draft: SurvDraft) => void;
   onGoToProfile: () => void;
 }) {
   const { me, survs } = useSurv();
@@ -78,7 +74,6 @@ export function HomeFeed({
         <ArenaFeed />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 90 }}>
-          <DraftCards horizontal onSelect={onDraft} />
           <DigestCard onGoToProfile={onGoToProfile} />
 
           <View style={styles.filterRow}>
