@@ -32,6 +32,9 @@ interface SurvStore {
   survs: Surv[];
   hydrated: boolean;
   userById: (id: string) => User | undefined;
+  setMyName: (name: string) => void;
+  importSurv: (packet: { surv: Omit<Surv, 'votes' | 'comments'>; askerName: string }) => Surv | null;
+  importVote: (packet: { survId: string; optionId: string; voterName: string }) => boolean;
   castVote: (survId: string, optionId: string) => void;
   createSurv: (input: {
     question: string;
@@ -58,6 +61,23 @@ const TIER_CYCLE: Record<ClosenessTier, ClosenessTier> = {
   regular: 'outer',
   outer: 'inner',
 };
+
+/** Stable guest id from a display name, so repeat interactions accrue SAGE. */
+const guestId = (name: string) => `u_g_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+
+function makeGuest(name: string): User {
+  return {
+    id: guestId(name),
+    handle: name.toLowerCase().replace(/\s+/g, ''),
+    name,
+    avatar: '🐣',
+    bio: 'Joined via a shared SURV',
+    clout: 35,
+    categorySage: {},
+    pairTrust: {},
+    connectors: [],
+  };
+}
 
 /** Flip any live SURV whose countdown has ended into the deciding state. */
 function sweep(survs: Surv[], now = Date.now()): Surv[] {
@@ -123,6 +143,54 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       survs,
       hydrated,
       userById,
+
+      setMyName: (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        setUsers((prev) =>
+          prev.map((u) => (u.id === ME ? { ...u, name: trimmed } : u)),
+        );
+      },
+
+      importSurv: ({ surv, askerName }) => {
+        if (survs.some((s) => s.id === surv.id)) {
+          return survs.find((s) => s.id === surv.id) ?? null;
+        }
+        // The sender's askerId means "them", not us — remap to a guest identity.
+        const asker = users.find((u) => u.name === askerName) ?? makeGuest(askerName);
+        if (!users.some((u) => u.id === asker.id)) {
+          setUsers((prev) => [...prev, asker]);
+        }
+        const imported: Surv = {
+          ...surv,
+          askerId: asker.id,
+          votes: [],
+          comments: [],
+          status: surv.expiresAt > Date.now() ? 'live' : 'deciding',
+        };
+        setSurvs((prev) => [imported, ...prev]);
+        return imported;
+      },
+
+      importVote: ({ survId, optionId, voterName }) => {
+        const surv = survs.find((s) => s.id === survId);
+        if (!surv || !surv.options.some((o) => o.id === optionId)) return false;
+        const voter = users.find((u) => u.name === voterName) ?? makeGuest(voterName);
+        if (surv.votes.some((v) => v.userId === voter.id)) return false;
+        if (!users.some((u) => u.id === voter.id)) {
+          setUsers((prev) => [...prev, voter]);
+        }
+        const asker = userById(surv.askerId) ?? me;
+        const weight = voterWeight(voter, asker, surv.category, nests);
+        setSurvs((prev) =>
+          prev.map((s) =>
+            s.id === survId
+              ? { ...s, votes: [...s.votes, { userId: voter.id, optionId, weight, votedAt: Date.now() }] }
+              : s,
+          ),
+        );
+        return true;
+      },
 
       castVote: (survId, optionId) => {
         setSurvs((prev) =>

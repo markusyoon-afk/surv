@@ -1,7 +1,7 @@
 // First-run explainer — three beats of the SURV loop, then get out of the way.
 
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, radius } from '../theme';
 
 const BEATS: Array<[string, string, string]> = [
@@ -10,7 +10,14 @@ const BEATS: Array<[string, string, string]> = [
   ['👍', 'Swipe the verdict', 'Act on the result, then grade it. Good call or bad, SURV learns whose advice to trust next time.'],
 ];
 
-export function Onboarding({ onDone }: { onDone: () => void }) {
+export function Onboarding({
+  defaultName,
+  onDone,
+}: {
+  defaultName: string;
+  onDone: (name: string) => void;
+}) {
+  const [name, setName] = useState(defaultName);
   return (
     <View style={styles.backdrop}>
       <View style={styles.card}>
@@ -25,7 +32,18 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             </View>
           </View>
         ))}
-        <Pressable style={styles.cta} onPress={onDone}>
+        <Text style={styles.nameLabel}>What should your Nest call you?</Text>
+        <TextInput
+          style={styles.nameInput}
+          value={name}
+          onChangeText={setName}
+          placeholder="Your name"
+          placeholderTextColor={colors.inkFaint}
+        />
+        <Pressable
+          style={[styles.cta, !name.trim() && { opacity: 0.45 }]}
+          onPress={() => name.trim() && onDone(name)}
+        >
           <Text style={styles.ctaText}>Let’s SURV</Text>
         </Pressable>
       </View>
@@ -58,6 +76,18 @@ const styles = StyleSheet.create({
   beatEmoji: { fontSize: 28 },
   beatTitle: { color: colors.ink, fontWeight: '800', fontSize: 15.5 },
   beatBody: { color: colors.inkSoft, fontSize: 13.5, lineHeight: 19, marginTop: 2 },
+  nameLabel: { color: colors.inkSoft, fontWeight: '800', fontSize: 12.5, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
+  nameInput: {
+    backgroundColor: colors.white,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: colors.chip,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    color: colors.ink,
+    fontWeight: '700',
+    marginBottom: 14,
+  },
   cta: {
     backgroundColor: colors.owl,
     borderRadius: radius.card,

@@ -7,6 +7,7 @@ import { SageBar } from '../components/SurvCard';
 import { displayWeight, formatRemaining, msRemaining, tally, winningOption } from '../engine/sage';
 import { useSurv } from '../engine/store';
 import type { Surv } from '../engine/types';
+import { shareText, survShareUrl, voteBackUrl } from '../lib/share';
 import { colors, radius } from '../theme';
 
 const HOUR = 3600_000;
@@ -14,7 +15,15 @@ const HOUR = 3600_000;
 export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () => void }) {
   const { me, userById, castVote, actOn, addComment, extendSurv } = useSurv();
   const [comment, setComment] = useState('');
+  const [shareNote, setShareNote] = useState<string | null>(null);
   if (!surv) return null;
+
+  const doShare = async (message: string) => {
+    const result = await shareText(message);
+    setShareNote(
+      result === 'copied' ? 'Link copied — paste it to your Nest' : result === 'failed' ? 'Could not open the share sheet' : null,
+    );
+  };
 
   const asker = userById(surv.askerId);
   const isMine = surv.askerId === me.id;
@@ -74,6 +83,40 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
                 <Text style={styles.extendText}>⏳ Extend countdown +24 hrs</Text>
               </Pressable>
             )}
+
+            {isMine && (
+              <Pressable
+                style={styles.shareBtn}
+                onPress={() => {
+                  const url = survShareUrl(surv, me.name);
+                  doShare(
+                    url
+                      ? `🦉 SURV me — help me decide: “${surv.question}”\n${url}`
+                      : `🦉 SURV me — help me decide: “${surv.question}” (open SURV to vote)`,
+                  );
+                }}
+              >
+                <Text style={styles.shareText}>📤 Share with your Nest</Text>
+              </Pressable>
+            )}
+
+            {!isMine && myVote && (
+              <Pressable
+                style={styles.shareBtn}
+                onPress={() => {
+                  const opt = surv.options.find((o) => o.id === myVote.optionId);
+                  const url = voteBackUrl({ survId: surv.id, optionId: myVote.optionId, voterName: me.name });
+                  doShare(
+                    url
+                      ? `🦉 I voted “${opt?.label}” on your SURV — tap to count it:\n${url}`
+                      : `🦉 I voted “${opt?.label}” on your SURV`,
+                  );
+                }}
+              >
+                <Text style={styles.shareText}>📨 Send my vote to {asker?.name}</Text>
+              </Pressable>
+            )}
+            {shareNote && <Text style={styles.hint}>{shareNote}</Text>}
 
             {needsDecision && (
               <>
@@ -189,6 +232,14 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   extendText: { color: colors.inkSoft, fontWeight: '700', fontSize: 13 },
+  shareBtn: {
+    backgroundColor: colors.owlDeep,
+    borderRadius: radius.button,
+    paddingVertical: 10,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  shareText: { color: colors.white, fontWeight: '800', fontSize: 13.5 },
   commentRow: { flexDirection: 'row', gap: 8, marginBottom: 8, alignItems: 'flex-start' },
   commentBubble: {
     flex: 1,

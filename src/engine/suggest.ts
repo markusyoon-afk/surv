@@ -7,6 +7,22 @@ import type { Category, SurvOption, User } from './types';
 let optionSeq = 0;
 const oid = () => `opt_${Date.now()}_${optionSeq++}`;
 
+export const CLAUDE_KEY_STORAGE = 'surv.anthropic.key';
+
+/**
+ * BYOK: the key comes from the build env or from AsyncStorage (set in Profile).
+ * AsyncStorage is loaded lazily so the pure engine stays runnable under plain node.
+ */
+async function getClaudeKey(): Promise<string | null> {
+  if (process.env.EXPO_PUBLIC_ANTHROPIC_KEY) return process.env.EXPO_PUBLIC_ANTHROPIC_KEY;
+  try {
+    const mod = await import('@react-native-async-storage/async-storage');
+    return await mod.default.getItem(CLAUDE_KEY_STORAGE);
+  } catch {
+    return null;
+  }
+}
+
 const CATEGORY_KEYWORDS: Array<[Category, RegExp]> = [
   ['Food', /\b(eat|lunch|dinner|restaurant|food|cook|takeout|brunch|snack|hungry)\b/i],
   ['Shopping', /\b(buy|purchase|gift|shop|deal|order)\b/i],
@@ -101,7 +117,7 @@ export async function suggestOptions(
   user: User,
   count = 3,
 ): Promise<{ category: Category; options: SurvOption[] }> {
-  const apiKey = process.env.EXPO_PUBLIC_ANTHROPIC_KEY;
+  const apiKey = await getClaudeKey();
   if (!apiKey || question.trim().length < 8) {
     return suggestOptionsHeuristic(question, user, count);
   }
@@ -112,6 +128,7 @@ export async function suggestOptions(
         'content-type': 'application/json',
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',

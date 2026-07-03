@@ -1,7 +1,8 @@
 // Profile — SAGEmeter (Clout), category SAGE, the Verdict deck (swipe right = good
 // call, left = bad call — the learning step), and connected sources.
 
-import React, { useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   PanResponder,
@@ -9,9 +10,11 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSurv } from '../engine/store';
+import { CLAUDE_KEY_STORAGE } from '../engine/suggest';
 import type { ConnectorId, Outcome } from '../engine/types';
 import { colors, radius } from '../theme';
 
@@ -116,10 +119,78 @@ export function Profile() {
         </View>
       </View>
 
+      <ClaudeSettings />
+
       <Pressable style={styles.reset} onPress={resetDemo}>
         <Text style={styles.resetText}>Reset demo data</Text>
       </Pressable>
     </ScrollView>
+  );
+}
+
+function ClaudeSettings() {
+  const [key, setKey] = useState('');
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(CLAUDE_KEY_STORAGE)
+      .then((v) => setSaved(!!v))
+      .catch(() => {});
+  }, []);
+
+  const save = () => {
+    const trimmed = key.trim();
+    if (!trimmed) return;
+    AsyncStorage.setItem(CLAUDE_KEY_STORAGE, trimmed)
+      .then(() => {
+        setSaved(true);
+        setKey('');
+      })
+      .catch(() => {});
+  };
+
+  const remove = () => {
+    AsyncStorage.removeItem(CLAUDE_KEY_STORAGE)
+      .then(() => setSaved(false))
+      .catch(() => {});
+  };
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.section}>Claude AI</Text>
+      {saved ? (
+        <>
+          <Text style={styles.hint}>
+            ✨ Claude is connected — option suggestions are AI-generated on this device.
+          </Text>
+          <Pressable style={styles.claudeRemove} onPress={remove}>
+            <Text style={styles.claudeRemoveText}>Disconnect Claude</Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <Text style={styles.hint}>
+            Paste an Anthropic API key (console.anthropic.com) to turn ✨ Suggest options
+            into live Claude generation. The key stays on this device only.
+          </Text>
+          <View style={styles.claudeRow}>
+            <TextInput
+              style={styles.claudeInput}
+              placeholder="sk-ant-…"
+              placeholderTextColor={colors.inkFaint}
+              value={key}
+              onChangeText={setKey}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+            />
+            <Pressable style={styles.claudeSave} onPress={save}>
+              <Text style={styles.claudeSaveText}>Connect</Text>
+            </Pressable>
+          </View>
+        </>
+      )}
+    </View>
   );
 }
 
@@ -212,4 +283,19 @@ const styles = StyleSheet.create({
   connectorTextOn: { color: colors.white },
   reset: { alignItems: 'center', paddingVertical: 10 },
   resetText: { color: colors.star, fontSize: 12.5, textDecorationLine: 'underline' },
+  claudeRow: { flexDirection: 'row', gap: 7 },
+  claudeInput: {
+    flex: 1,
+    backgroundColor: colors.white,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: colors.chip,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    color: colors.ink,
+  },
+  claudeSave: { backgroundColor: colors.owl, borderRadius: radius.button, paddingHorizontal: 14, justifyContent: 'center' },
+  claudeSaveText: { color: colors.white, fontWeight: '800', fontSize: 13 },
+  claudeRemove: { alignSelf: 'flex-start', backgroundColor: colors.panelDeep, borderRadius: radius.button, paddingHorizontal: 12, paddingVertical: 7 },
+  claudeRemoveText: { color: colors.inkSoft, fontWeight: '700', fontSize: 12.5 },
 });

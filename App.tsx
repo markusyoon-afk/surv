@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { NightSky } from './src/components/NightSky';
 import { Onboarding } from './src/components/Onboarding';
+import { clearShareHash, parseShareHash } from './src/lib/share';
 import { SurvProvider, useSurv } from './src/engine/store';
 import type { Surv } from './src/engine/types';
 import { HomeFeed } from './src/screens/HomeFeed';
@@ -28,7 +29,8 @@ function Shell() {
   const [tab, setTab] = useState<Tab>('home');
   const [openSurv, setOpenSurv] = useState<Surv | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const { me, survs, sweepExpired } = useSurv();
+  const [importNotice, setImportNotice] = useState<string | null>(null);
+  const { me, survs, sweepExpired, setMyName, importSurv, importVote, hydrated } = useSurv();
   const dueForMe = survs.filter(
     (s) => s.askerId === me.id && (s.status === 'acted' || s.status === 'deciding'),
   ).length;
@@ -49,10 +51,35 @@ function Shell() {
       .catch(() => {});
   }, []);
 
-  const dismissOnboarding = () => {
+  const dismissOnboarding = (name: string) => {
+    setMyName(name);
     setShowOnboarding(false);
     AsyncStorage.setItem(ONBOARDED_KEY, 'y').catch(() => {});
   };
+
+  // Incoming share links (web): #s= imports a friend's SURV, #v= lands a vote-back.
+  useEffect(() => {
+    if (!hydrated) return;
+    const payload = parseShareHash();
+    if (!payload) return;
+    clearShareHash();
+    if (payload.kind === 'surv') {
+      const imported = importSurv(payload.packet);
+      if (imported) {
+        setOpenSurv(imported);
+        setImportNotice(`${payload.packet.askerName} needs your vote 🦉`);
+      }
+    } else {
+      const ok = importVote(payload.packet);
+      setImportNotice(
+        ok
+          ? `${payload.packet.voterName}’s vote landed — SAGEmeter updated`
+          : 'That vote was already counted (or the SURV isn’t on this device).',
+      );
+    }
+    const t = setTimeout(() => setImportNotice(null), 5000);
+    return () => clearTimeout(t);
+  }, [hydrated]);
 
   return (
     <NightSky>
@@ -98,7 +125,12 @@ function Shell() {
           surv={openSurv ? survs.find((s) => s.id === openSurv.id) ?? null : null}
           onClose={() => setOpenSurv(null)}
         />
-        {showOnboarding && <Onboarding onDone={dismissOnboarding} />}
+        {importNotice && (
+          <View style={styles.notice}>
+            <Text style={styles.noticeText}>{importNotice}</Text>
+          </View>
+        )}
+        {showOnboarding && <Onboarding defaultName={me.name} onDone={dismissOnboarding} />}
         <StatusBar style="light" />
       </SafeAreaView>
     </NightSky>
@@ -173,4 +205,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: { color: colors.white, fontSize: 10.5, fontWeight: '800' },
+  notice: {
+    position: 'absolute',
+    top: 70,
+    left: 20,
+    right: 20,
+    backgroundColor: colors.owl,
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  noticeText: { color: colors.white, fontWeight: '800', fontSize: 13.5, textAlign: 'center' },
 });

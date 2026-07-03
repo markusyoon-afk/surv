@@ -1,40 +1,50 @@
-# 🦉 Launching SURV
+# 🦉 Launching SURV on your iPhone
 
-Three ways to run the app, easiest first.
+## The 2-minute path (do this)
 
-## 1. Instant — double-click (Windows, full app in your browser)
+1. On your PC, double-click **SHARE-SURV-ONLINE.bat**
+   (first run downloads the Cloudflare tunnel, ~60 MB, then starts SURV).
+2. Look for the line ending in **`.trycloudflare.com`** — that's your public URL.
+3. Open that URL in **Safari on your iPhone** → tap **Share** → **Add to Home Screen**.
+   SURV installs with the owl icon and launches full-screen like a native app.
+4. **Send the same URL to friends.** They add it to their home screens too. Everyone
+   gets the full app — their own Nests, SURVs, and SAGE algorithm on their device.
 
-Double-click **START-SURV.bat**. It opens SURV at http://localhost:8090 using the
-prebuilt bundle in `dist/`. No install step — only Node.js is needed (you have it).
-Your data persists between launches. Close the black window to quit.
+Keep the PC window open while people are joining. The URL changes each time you
+restart the tunnel (fine for beta bursts; see "permanent URL" below).
 
-## 2. On your iPhone (the real product experience)
+**Home-only alternative (no tunnel):** double-click **START-SURV.bat** — it prints a
+`http://<your-PC-IP>:8090` URL that works on your iPhone over the same Wi-Fi.
 
+## How sharing works (no accounts, no server — links are the network)
+
+- **Share a SURV:** open your SURV → **📤 Share with your Nest** → sends a link via
+  iMessage/WhatsApp. A friend taps it and your SURV appears in their app, ready to vote.
+- **Votes come back:** after voting, they tap **📨 Send my vote to you** — you tap that
+  link and their vote lands in your tally, weighted by their SAGE standing with you.
+- **The algorithm learns:** when you act and swipe the verdict 👍/👎, every voter —
+  friends included — gains or loses SAGE and pair-trust with you. Repeat interactions
+  make SURV steadily smarter about whose advice you should trust, per category.
+
+## Turn on Claude AI (continuous learning support)
+
+In the app: **You → Claude AI → paste an Anthropic API key** (get one at
+console.anthropic.com). ✨ Suggest options becomes live Claude generation, tailored to
+each question. The key never leaves the device it's entered on — each person can
+connect their own.
+
+## Permanent URL + true shared database (next step, needs 5 min from you)
+
+The link-based sharing above needs no accounts. For an always-on URL and one shared
+live database (everyone sees votes in real time without vote-back links):
+1. Create a free GitHub account (or tell me your login) → I deploy the app permanently to GitHub Pages.
+2. Create a free Supabase project → I build the shared backend (schema is ready in `src/engine/types.ts`).
+
+## TestFlight (the full native App Store path)
+
+Needs an Apple Developer account ($99/yr) + free Expo account:
 ```
-npm install
-npx expo start
-```
-
-Install **Expo Go** free from the App Store, then scan the QR code in the terminal
-with your iPhone camera. SURV opens on your phone; shake the phone for the reload menu.
-Both devices must be on the same Wi-Fi.
-
-## 3. Ship to TestFlight (when you're ready for real beta testers)
-
-Needs an Apple Developer account ($99/yr) and a free Expo account:
-
-```
-npm install -g eas-cli
-eas login
+npm install -g eas-cli && eas login
 eas build --platform ios --profile preview
-eas submit --platform ios
 ```
-
-The bundle identifier is already configured (`com.survllc.surv` in app.json).
-
----
-
-**First run tips:** the app seeds demo data — the original 2011 SATT crew and real
-questions from the alpha database. Vote on a SURV to see the weighted SAGEmeter, check
-the **You** tab to swipe a verdict on the bike decision, and post your own SURV with
-✨ Suggest options. *Reset demo data* at the bottom of Profile starts everything fresh.
+Bundle id `com.survllc.surv` is already configured in app.json.
