@@ -48,6 +48,8 @@ interface PersistedState {
 export interface OwlStyle {
   ring?: string;
   accessory?: string;
+  palette?: string;
+  shape?: string;
 }
 
 interface SurvStore {

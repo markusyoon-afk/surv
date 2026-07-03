@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NestFrame } from '../components/NestFrame';
+import { OwlAvatar } from '../components/OwlAvatar';
 import { suggestConnections } from '../engine/connections';
 import { useSurv } from '../engine/store';
 import type { Category } from '../engine/types';
@@ -120,7 +121,7 @@ export function Nests() {
               const canCycle = iOwn && m.userId !== me.id;
               return (
                 <View key={m.userId} style={styles.memberRow}>
-                  <Text style={{ fontSize: 20 }}>{user.avatar}</Text>
+                  <OwlAvatar clout={user.clout} size={26} variantOf={user.id} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.memberName}>
                       {user.id === me.id ? 'You' : user.name}
@@ -156,7 +157,7 @@ export function Nests() {
           </Text>
           {suggestions.map(({ user, sharedPlatforms, reason }) => (
             <View key={user.id} style={styles.memberRow}>
-              <Text style={{ fontSize: 20 }}>{user.avatar}</Text>
+              <OwlAvatar clout={user.clout} size={26} variantOf={user.id} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.memberName}>{user.name}</Text>
                 <View style={styles.platformRow}>
@@ -168,7 +169,11 @@ export function Nests() {
                       color={colors.inkSoft}
                     />
                   ))}
-                  <Text style={styles.memberMeta}>{reason}</Text>
+                  <Text style={styles.memberMeta}>
+                    {reason}
+                    {user.connectors.length >= 2 ? ' · very active socially' : ''}
+                    {topSage(user.categorySage) ? ` · would shine in ${topSage(user.categorySage)!.category}` : ''}
+                  </Text>
                 </View>
               </View>
               <Pressable

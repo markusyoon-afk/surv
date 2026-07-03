@@ -149,11 +149,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
           return (
             <View key={row.user.id} style={[styles.sageRow, isMe && styles.sageRowMe]}>
               <Text style={styles.rank}>{i + 1}</Text>
-              {isMe ? (
-                <OwlAvatar clout={me.clout} size={28} />
-              ) : (
-                <Text style={{ fontSize: 20 }}>{row.user.avatar}</Text>
-              )}
+              <OwlAvatar clout={row.user.clout} size={28} variantOf={row.user.id} styleCfg={isMe ? undefined : undefined} />
               <View style={{ flex: 1 }}>
                 <View style={styles.nameRow}>
                   <Text style={styles.sageName}>{isMe ? `${row.user.name} (you)` : row.user.name}</Text>

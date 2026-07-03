@@ -14,7 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AVATAR_STAGES, nextStage, OWL_ACCESSORIES, OWL_RINGS, OwlAvatar, stageForClout } from '../components/OwlAvatar';
+import { AVATAR_STAGES, nextStage, OWL_ACCESSORIES, OWL_PALETTES, OWL_RINGS, OWL_SHAPES, OwlAvatar, stageForClout } from '../components/OwlAvatar';
 import { Image } from 'react-native';
 import { useSurv } from '../engine/store';
 import { CLAUDE_KEY_STORAGE } from '../engine/suggest';
@@ -177,6 +177,30 @@ export function Profile() {
           The stage is earned and never changes — but your owl is yours. New gear
           unlocks as your SAGEmeter grows.
         </Text>
+        <Text style={styles.customLabel}>Owl color</Text>
+        <View style={styles.connectors}>
+          {OWL_PALETTES.map((p) => (
+            <Pressable
+              key={p.id}
+              style={[styles.swatch, (owlStyle.palette ?? 'g') === p.id && styles.swatchOn]}
+              onPress={() => setOwlStyle({ ...owlStyle, palette: p.id })}
+            >
+              <Text style={styles.swatchText}>{p.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+        <Text style={styles.customLabel}>Owl shape</Text>
+        <View style={styles.connectors}>
+          {OWL_SHAPES.map((s) => (
+            <Pressable
+              key={s.id}
+              style={[styles.swatch, (owlStyle.shape ?? 'round') === s.id && styles.swatchOn]}
+              onPress={() => setOwlStyle({ ...owlStyle, shape: s.id })}
+            >
+              <Text style={styles.swatchText}>{s.label}</Text>
+            </Pressable>
+          ))}
+        </View>
         <Text style={styles.customLabel}>Ring</Text>
         <View style={styles.connectors}>
           {OWL_RINGS.map((r) => {

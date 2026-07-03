@@ -4,16 +4,32 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { OwlAvatar } from './OwlAvatar';
 import { activeArenaSurvs, arenaStats, type ArenaSurv } from '../engine/arena';
 import { formatRemaining } from '../engine/sage';
 import { useSurv } from '../engine/store';
 import { CATEGORY_ICONS, CATEGORY_LABELS, colors, radius } from '../theme';
 
+type SortMode = 'hot' | 'ending' | 'foryou';
+
 export function ArenaFeed() {
-  const { arenaVotes, voteArena } = useSurv();
+  const { me, arenaVotes, voteArena } = useSurv();
   const [refreshKey, setRefreshKey] = useState(0);
+  const [sort, setSort] = useState<SortMode>('hot');
   const now = Date.now();
-  const survs = useMemo(() => activeArenaSurvs(now), [Math.floor(now / 30_000), refreshKey]);
+  const survs = useMemo(() => {
+    const live = activeArenaSurvs(now);
+    if (sort === 'ending') return [...live].sort((a, b) => a.expiresAt - b.expiresAt);
+    if (sort === 'foryou') {
+      // Recommended by YOUR expertise: your SAGE amplifies matching categories.
+      return [...live].sort(
+        (a, b) =>
+          b.votes * (1 + (me.categorySage[b.category] ?? 0) / 100) -
+          a.votes * (1 + (me.categorySage[a.category] ?? 0) / 100),
+      );
+    }
+    return live; // hot: votes desc (default)
+  }, [Math.floor(now / 30_000), refreshKey, sort, me]);
   const stats = arenaStats(now);
 
   return (
@@ -26,6 +42,19 @@ export function ArenaFeed() {
         <Pressable onPress={() => setRefreshKey((k) => k + 1)} hitSlop={8}>
           <Ionicons name="refresh" size={14} color={colors.star} />
         </Pressable>
+      </View>
+      <View style={styles.sortRow}>
+        {([['hot', '🔥 Hottest'], ['ending', '⏳ Ending soon'], ['foryou', '🎯 For you']] as Array<[SortMode, string]>).map(
+          ([mode, label]) => (
+            <Pressable
+              key={mode}
+              style={[styles.sortChip, sort === mode && styles.sortChipOn]}
+              onPress={() => setSort(mode)}
+            >
+              <Text style={[styles.sortText, sort === mode && styles.sortTextOn]}>{label}</Text>
+            </Pressable>
+          ),
+        )}
       </View>
       {survs.map((s) => (
         <ArenaCard key={s.id} surv={s} myVote={arenaVotes[s.id]} onVote={voteArena} />
@@ -53,7 +82,7 @@ function ArenaCard({
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <Text style={{ fontSize: 22 }}>{surv.askerAvatar}</Text>
+        <OwlAvatar clout={55} size={28} variantOf={surv.askerId} />
         <View style={{ flex: 1 }}>
           <View style={styles.nameRow}>
             <Text style={styles.asker}>{surv.askerName}</Text>
@@ -126,6 +155,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(78,201,180,0.25)',
   },
   tickerText: { color: colors.white, fontWeight: '600', fontSize: 12, flex: 1 },
+  sortRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 14, marginBottom: 10 },
+  sortChip: { backgroundColor: colors.nightCard, borderRadius: radius.chip, paddingHorizontal: 11, paddingVertical: 6 },
+  sortChipOn: { backgroundColor: colors.sage },
+  sortText: { color: colors.star, fontSize: 11.5, fontWeight: '600' },
+  sortTextOn: { color: colors.navy, fontWeight: '700' },
   card: {
     backgroundColor: colors.panel,
     borderRadius: radius.card,

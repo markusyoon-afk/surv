@@ -4,6 +4,26 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../theme';
+import { AVATAR_MAP } from './avatarMap';
+
+export const OWL_PALETTES = [
+  { id: 'g', label: '🌿 Forest' },
+  { id: 'b', label: '💧 Sky' },
+  { id: 'r', label: '🪵 Barn' },
+];
+export const OWL_SHAPES = [
+  { id: 'round', label: 'Round' },
+  { id: 'tall', label: 'Tall' },
+  { id: 'chunky', label: 'Chunky' },
+];
+
+/** Deterministic look for any user id — every owl in the Forest is its own bird. */
+export function variantFor(id: string): { palette: string; shape: string } {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  h = Math.abs(h);
+  return { palette: ['g', 'b', 'r'][h % 3], shape: ['round', 'tall', 'chunky'][(h >> 3) % 3] };
+}
 
 export interface AvatarStage {
   stage: number;
@@ -51,6 +71,8 @@ export const OWL_RINGS: Array<{ id: string; color: string; label: string; min: n
 export interface OwlStyleCfg {
   ring?: string;
   accessory?: string;
+  palette?: string;
+  shape?: string;
 }
 
 export function OwlAvatar({
@@ -58,13 +80,20 @@ export function OwlAvatar({
   size = 44,
   showLabel = false,
   styleCfg,
+  variantOf,
 }: {
   clout: number;
   size?: number;
   showLabel?: boolean;
   styleCfg?: OwlStyleCfg;
+  /** User id for deterministic per-user looks (others' avatars). */
+  variantOf?: string;
 }) {
   const stage = stageForClout(clout);
+  const auto = variantOf ? variantFor(variantOf) : { palette: 'g', shape: 'round' };
+  const palette = styleCfg?.palette ?? auto.palette;
+  const shape = styleCfg?.shape ?? auto.shape;
+  const img = AVATAR_MAP[stage.stage]?.[palette]?.[shape] ?? stage.img;
   const ring = OWL_RINGS.find((r) => r.id === styleCfg?.ring && clout >= r.min);
   const acc = OWL_ACCESSORIES.find((a) => a.id === styleCfg?.accessory && clout >= a.min);
   return (
@@ -78,7 +107,7 @@ export function OwlAvatar({
           borderColor: ring?.color ?? 'transparent',
         }}
       >
-        <Image source={stage.img} style={{ width: '100%', height: '100%' }} />
+        <Image source={img} style={{ width: '100%', height: '100%' }} />
         {acc && acc.emoji !== '' && (
           <Text
             style={{

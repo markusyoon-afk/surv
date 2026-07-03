@@ -43,5 +43,5 @@ export function suggestConnections(me: User, users: User[], nests: Nest[]): Conn
       (a, b) =>
         b.sharedPlatforms.length - a.sharedPlatforms.length || b.user.clout - a.user.clout,
     )
-    .slice(0, 5);
+    .slice(0, 8);
 }

@@ -3,6 +3,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { OwlAvatar } from './OwlAvatar';
 import { formatRemaining, msRemaining, tally } from '../engine/sage';
 import { useSurv } from '../engine/store';
 import type { Surv } from '../engine/types';
@@ -23,7 +24,7 @@ export function SageBar({ pct, label, mine, acted }: { pct: number; label: strin
 }
 
 export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) => void }) {
-  const { me, userById, castVote, actOn, grade } = useSurv();
+  const { me, userById, castVote, actOn, grade, owlStyle } = useSurv();
   const [impact, setImpact] = React.useState<string | null>(null);
   const asker = userById(surv.askerId);
   const myVote = surv.votes.find((v) => v.userId === me.id);
@@ -45,7 +46,12 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
   return (
     <Pressable style={styles.card} onPress={() => onOpen(surv)}>
       <View style={styles.header}>
-        <Text style={styles.avatar}>{asker?.avatar ?? '👤'}</Text>
+        <OwlAvatar
+          clout={asker?.clout ?? 45}
+          size={30}
+          variantOf={surv.askerId}
+          styleCfg={isMine ? owlStyle : undefined}
+        />
         <View style={{ flex: 1 }}>
           <Text style={styles.asker}>{isMine ? 'You' : asker?.name}</Text>
           <View style={styles.metaRow}>
