@@ -14,15 +14,17 @@ import { HomeFeed } from './src/screens/HomeFeed';
 import { Nests } from './src/screens/Nests';
 import { NewSurv } from './src/screens/NewSurv';
 import { Profile } from './src/screens/Profile';
+import { Sages } from './src/screens/Sages';
 import { SurvDetail } from './src/screens/SurvDetail';
 import { colors } from './src/theme';
 
-type Tab = 'home' | 'new' | 'nests' | 'profile';
+type Tab = 'home' | 'new' | 'nests' | 'sages' | 'profile';
 
 const TABS: Array<[Tab, keyof typeof Ionicons.glyphMap, string]> = [
   ['home', 'home', 'Tree'],
   ['new', 'add-circle', 'New SURV'],
   ['nests', 'people', 'Nests'],
+  ['sages', 'trophy', 'Sages'],
   ['profile', 'person', 'You'],
 ];
 
@@ -34,20 +36,29 @@ function Shell() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState<SurvDraft | null>(null);
-  const { me, survs, sweepExpired, setMyName, importSurv, importVote, hydrated } = useSurv();
+  const { me, survs, sweepExpired, liveTick, setMyName, importSurv, importVote, hydrated } = useSurv();
   const dueForMe = survs.filter(
     (s) => s.askerId === me.id && (s.status === 'acted' || s.status === 'deciding'),
   ).length;
 
-  // Minute heartbeat: countdown labels stay fresh and expired SURVs flip to deciding.
+  // Minute heartbeat: countdowns refresh, expired SURVs flip to deciding, arena
+  // results settle, and AI advisors weigh in on your live SURVs.
   const [, setTick] = useState(0);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showNotice = (text: string) => {
+    setImportNotice(text);
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    noticeTimer.current = setTimeout(() => setImportNotice(null), 6000);
+  };
   useEffect(() => {
     const timer = setInterval(() => {
       sweepExpired();
+      const news = liveTick();
+      if (news.length > 0) showNotice(news[0]);
       setTick((t) => t + 1);
     }, 30_000);
     return () => clearInterval(timer);
-  }, [sweepExpired]);
+  }, [sweepExpired, liveTick]);
 
   // Verdict nudges: browser notification when something new needs your call.
   const prevDue = useRef(dueForMe);
@@ -160,6 +171,7 @@ function Shell() {
             />
           )}
           {tab === 'nests' && <Nests />}
+          {tab === 'sages' && <Sages />}
           {tab === 'profile' && <Profile />}
         </View>
 

@@ -14,7 +14,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { nextStage, OwlAvatar, stageForClout } from '../components/OwlAvatar';
+import { AVATAR_STAGES, nextStage, OwlAvatar, stageForClout } from '../components/OwlAvatar';
+import { Image } from 'react-native';
 import { useSurv } from '../engine/store';
 import { CLAUDE_KEY_STORAGE } from '../engine/suggest';
 import type { ConnectorId, Outcome } from '../engine/types';
@@ -49,12 +50,34 @@ export function Profile() {
           <View style={[styles.meterFill, { width: `${me.clout}%` }]} />
           <Text style={styles.meterText}>{Math.round(me.clout)}%</Text>
         </View>
+        <View style={styles.evoTrack}>
+          {AVATAR_STAGES.map((s) => {
+            const current = stageForClout(me.clout).stage === s.stage;
+            const reached = me.clout >= s.minClout;
+            return (
+              <View key={s.stage} style={styles.evoStop}>
+                <View style={[styles.evoRing, current && styles.evoRingOn, !reached && { opacity: 0.35 }]}>
+                  <Image source={s.img} style={{ width: 34, height: 34 }} />
+                </View>
+                <Text style={[styles.evoPct, current && styles.evoPctOn]}>{s.minClout}%</Text>
+              </View>
+            );
+          })}
+        </View>
         <Text style={styles.evolution}>
           {(() => {
+            const stage = stageForClout(me.clout);
             const next = nextStage(me.clout);
+            const meaning: Record<number, string> = {
+              1: 'Hatchling — learning whose advice to trust.',
+              2: 'Owl — a trusted voice; your votes carry real weight.',
+              3: 'Sage — a category authority your Nest leans on.',
+              4: 'Masked Sage — guardian of good calls across circles.',
+              5: 'Super Sage — legendary. Your word moves Nests.',
+            };
             return next
-              ? `You’re a ${stageForClout(me.clout).label} — evolve into ${next.label} at ${next.minClout}%`
-              : '🦸 Super Sage Owl — maximum evolution reached';
+              ? `${meaning[stage.stage]} Evolve into ${next.label} at ${next.minClout}% — every good call you influence gets you closer.`
+              : `${meaning[5]} Maximum evolution reached.`;
           })()}
         </Text>
         {sageEntries.length > 0 && (
@@ -357,6 +380,20 @@ const styles = StyleSheet.create({
   meterFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: colors.owl, borderRadius: 10 },
   meterText: { color: colors.ink, fontWeight: '900', fontSize: 15, paddingHorizontal: 12 },
   evolution: { color: colors.inkSoft, fontSize: 12.5, fontStyle: 'italic', marginTop: 6 },
+  evoTrack: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 12, paddingHorizontal: 6 },
+  evoStop: { alignItems: 'center', gap: 3 },
+  evoRing: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  evoRingOn: { borderColor: colors.owl, backgroundColor: 'rgba(58,165,135,0.10)' },
+  evoPct: { color: colors.inkFaint, fontSize: 10.5, fontWeight: '600' },
+  evoPctOn: { color: colors.owlDeep, fontWeight: '800' },
   sageRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   sageLabel: { color: colors.ink, fontWeight: '700', fontSize: 12.5, width: 100 },
   sageTrack: { flex: 1, height: 10, backgroundColor: colors.panelDeep, borderRadius: 5, overflow: 'hidden' },

@@ -6,7 +6,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchNearbyPlaces, GEO_CATEGORIES, getCurrentPosition, reverseCity, type NearbyPlace } from '../lib/geo';
 import { publishLive, subscribeLive } from '../lib/live';
-import { applyOutcome, voterWeight } from './sage';
+import { arenaResult } from './arena';
+import { adviseOption, advisorRationale, pickAdvisor } from './population';
+import { applyArenaResult, applyOutcome, voterWeight } from './sage';
 import { parseIcs, type CalEvent } from './schedule';
 import { ME, seedNests, seedSurvs, seedUsers } from './seed';
 import type {
@@ -36,6 +38,8 @@ interface PersistedState {
   calendarEvents?: CalEvent[];
   geo?: GeoState | null;
   nearbyPlaces?: Partial<Record<Category, NearbyPlace[]>>;
+  arenaVotes?: Record<string, string>;
+  arenaProcessed?: string[];
 }
 
 interface SurvStore {
@@ -46,6 +50,14 @@ interface SurvStore {
   calendarEvents: CalEvent[];
   geo: GeoState | null;
   nearbyPlaces: Partial<Record<Category, NearbyPlace[]>>;
+  /** My votes in the public arena, survId → optionId. */
+  arenaVotes: Record<string, string>;
+  voteArena: (survId: string, optionId: string) => void;
+  /**
+   * Heartbeat work: settle ended arena SURVs I voted on (self-training) and
+   * let AI advisors engage my live SURVs. Returns news lines for notices.
+   */
+  liveTick: () => string[];
   hydrated: boolean;
   userById: (id: string) => User | undefined;
   /** GPS → city + real nearby places per category; suggestions become geolocated. */
@@ -120,6 +132,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
   const [calendarEvents, setCalendarEvents] = useState<CalEvent[]>([]);
   const [geo, setGeo] = useState<GeoState | null>(null);
   const [nearbyPlaces, setNearbyPlaces] = useState<Partial<Record<Category, NearbyPlace[]>>>({});
+  const [arenaVotes, setArenaVotes] = useState<Record<string, string>>({});
+  const [arenaProcessed, setArenaProcessed] = useState<string[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const skipNextSave = useRef(false);
 
@@ -141,6 +155,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             setCalendarEvents(saved.calendarEvents ?? []);
             setGeo(saved.geo ?? null);
             setNearbyPlaces(saved.nearbyPlaces ?? {});
+            setArenaVotes(saved.arenaVotes ?? {});
+            setArenaProcessed(saved.arenaProcessed ?? []);
           }
         }
       } catch {
@@ -178,9 +194,18 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       skipNextSave.current = false;
       return;
     }
-    const state: PersistedState = { users, nests, survs, calendarEvents, geo, nearbyPlaces };
+    const state: PersistedState = {
+      users,
+      nests,
+      survs,
+      calendarEvents,
+      geo,
+      nearbyPlaces,
+      arenaVotes,
+      arenaProcessed,
+    };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
-  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, hydrated]);
+  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, hydrated]);
 
   const store = useMemo<SurvStore>(() => {
     const userById = (id: string) => users.find((u) => u.id === id);
@@ -196,6 +221,79 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       nearbyPlaces,
       hydrated,
       userById,
+
+      arenaVotes,
+
+      voteArena: (survId, optionId) => {
+        setArenaVotes((prev) => (prev[survId] ? prev : { ...prev, [survId]: optionId }));
+      },
+
+      liveTick: () => {
+        const news: string[] = [];
+        const now = Date.now();
+
+        // 1. Settle ended arena SURVs I helped decide — self-training.
+        const pending = Object.entries(arenaVotes).filter(([id]) => !arenaProcessed.includes(id));
+        const settled: string[] = [];
+        for (const [survId, optionId] of pending) {
+          const result = arenaResult(survId, now);
+          if (!result) continue;
+          settled.push(survId);
+          const actedOption = result.options[result.actedIndex];
+          const aligned = actedOption?.id === optionId;
+          setUsers((prev) =>
+            prev.map((u) => {
+              if (u.id !== ME) return u;
+              const copy = { ...u, categorySage: { ...u.categorySage } };
+              const { sageDelta } = applyArenaResult(copy, result.category, aligned, result.outcome);
+              if (aligned && result.outcome === 'good') {
+                news.push(
+                  `Your call on “${result.question}” was a good one — +${Math.abs(Math.round(sageDelta * 10) / 10)} ${result.category} SAGE 🦉`,
+                );
+              } else if (!aligned && result.outcome === 'bad') {
+                news.push(`You warned against “${result.question}” — right call. SAGE up.`);
+              }
+              return copy;
+            }),
+          );
+        }
+        if (settled.length > 0) setArenaProcessed((prev) => [...prev, ...settled]);
+
+        // 2. AI advisors engage my live SURVs with informed votes + reasons.
+        const mine = survs.filter(
+          (s) => s.askerId === ME && s.status === 'live' && s.expiresAt > now && s.votes.length < 5,
+        );
+        for (const surv of mine) {
+          if (Math.random() > 0.5) continue; // trickle, don't flood
+          const excludeIds = new Set(surv.votes.map((v) => v.userId));
+          const advisor = pickAdvisor(surv.category, excludeIds, now + surv.id.length);
+          if (!users.some((u) => u.id === advisor.id)) {
+            setUsers((prev) => (prev.some((u) => u.id === advisor.id) ? prev : [...prev, advisor]));
+          }
+          const option = adviseOption(advisor, surv.options, now);
+          const weight = voterWeight(advisor, me, surv.category, nests);
+          const withComment = Math.random() < 0.6;
+          const rationale = advisorRationale(advisor, surv.category, option, now + 1);
+          setSurvs((prev) =>
+            prev.map((s) => {
+              if (s.id !== surv.id || s.votes.some((v) => v.userId === advisor.id)) return s;
+              return {
+                ...s,
+                votes: [...s.votes, { userId: advisor.id, optionId: option.id, weight, votedAt: now }],
+                comments: withComment
+                  ? [
+                      ...(s.comments ?? []),
+                      { id: `c_ai_${now}_${advisor.id}`, userId: advisor.id, text: rationale, at: now },
+                    ]
+                  : s.comments,
+              };
+            }),
+          );
+          news.push(`${advisor.name} voted on “${surv.question.slice(0, 40)}…” with a reason 🤖`);
+        }
+
+        return news;
+      },
 
       requestLocation: async () => {
         const pos = await getCurrentPosition();
@@ -432,9 +530,11 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         setCalendarEvents([]);
         setGeo(null);
         setNearbyPlaces({});
+        setArenaVotes({});
+        setArenaProcessed([]);
       },
     };
-  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, hydrated]);
+  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, hydrated]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

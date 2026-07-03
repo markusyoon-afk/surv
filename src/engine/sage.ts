@@ -164,6 +164,32 @@ export function applyOutcome(
   return deltas;
 }
 
+/**
+ * Self-training: you helped a stranger decide in the public arena. If you
+ * backed the option they acted on and it went well, your sage grows — the
+ * path from Hatchling to Super Sage runs through good advice at scale.
+ */
+export function applyArenaResult(
+  me: User,
+  category: Category,
+  aligned: boolean,
+  outcome: Outcome,
+): { cloutDelta: number; sageDelta: number } {
+  const cur = getCategorySage(me, category);
+  let sageDelta: number;
+  let cloutDelta: number;
+  if (outcome === 'good') {
+    sageDelta = aligned ? 3 * ((100 - cur) / 70) : -0.5;
+    cloutDelta = aligned ? 1 : 0;
+  } else {
+    sageDelta = aligned ? -2 : 1.5;
+    cloutDelta = aligned ? -1 : 1;
+  }
+  me.categorySage[category] = clamp(Math.round((cur + sageDelta) * 10) / 10, 1, 100);
+  me.clout = clamp(me.clout + cloutDelta, 1, 100);
+  return { cloutDelta, sageDelta };
+}
+
 export function msRemaining(surv: Surv, now = Date.now()): number {
   return Math.max(0, surv.expiresAt - now);
 }

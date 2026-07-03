@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ArenaFeed } from '../components/ArenaFeed';
 import { DigestCard } from '../components/DigestCard';
 import { DraftCards } from '../components/DraftCards';
 import { SurvCard } from '../components/SurvCard';
@@ -24,6 +25,7 @@ export function HomeFeed({
   onGoToProfile: () => void;
 }) {
   const { me, survs } = useSurv();
+  const [scope, setScope] = useState<'network' | 'arena'>('network');
   const [visibility, setVisibility] = useState<Visibility>('all');
   const [responded, setResponded] = useState<Responded>('all');
 
@@ -46,9 +48,28 @@ export function HomeFeed({
 
   return (
     <View style={{ flex: 1 }}>
-      <DraftCards horizontal onSelect={onDraft} />
-      <DigestCard onGoToProfile={onGoToProfile} />
-      <View style={styles.filters}>
+      <View style={styles.scopeRow}>
+        <Pressable
+          style={[styles.scopeBtn, scope === 'network' && styles.scopeBtnOn]}
+          onPress={() => setScope('network')}
+        >
+          <Text style={[styles.scopeText, scope === 'network' && styles.scopeTextOn]}>My Network</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.scopeBtn, scope === 'arena' && styles.scopeBtnOn]}
+          onPress={() => setScope('arena')}
+        >
+          <Text style={[styles.scopeText, scope === 'arena' && styles.scopeTextOn]}>🌍 Public arena</Text>
+        </Pressable>
+      </View>
+
+      {scope === 'arena' ? (
+        <ArenaFeed />
+      ) : (
+        <>
+          <DraftCards horizontal onSelect={onDraft} />
+          <DigestCard onGoToProfile={onGoToProfile} />
+          <View style={styles.filters}>
         <FilterGroup
           value={visibility}
           onChange={setVisibility}
@@ -68,14 +89,16 @@ export function HomeFeed({
           ]}
         />
       </View>
-      <ScrollView contentContainerStyle={{ paddingBottom: 90 }}>
-        {feed.map((surv) => (
-          <SurvCard key={surv.id} surv={surv} onOpen={onOpen} />
-        ))}
-        {feed.length === 0 && (
-          <Text style={styles.empty}>Nothing here — post a SURV and let your Nest decide.</Text>
-        )}
-      </ScrollView>
+          <ScrollView contentContainerStyle={{ paddingBottom: 90 }}>
+            {feed.map((surv) => (
+              <SurvCard key={surv.id} surv={surv} onOpen={onOpen} />
+            ))}
+            {feed.length === 0 && (
+              <Text style={styles.empty}>Nothing here — post a SURV and let your Nest decide.</Text>
+            )}
+          </ScrollView>
+        </>
+      )}
     </View>
   );
 }
@@ -105,6 +128,19 @@ function FilterGroup<T extends string>({
 }
 
 const styles = StyleSheet.create({
+  scopeRow: {
+    flexDirection: 'row',
+    marginHorizontal: 14,
+    marginBottom: 10,
+    backgroundColor: colors.nightCard,
+    borderRadius: 12,
+    padding: 3,
+    gap: 3,
+  },
+  scopeBtn: { flex: 1, paddingVertical: 7, borderRadius: 9, alignItems: 'center' },
+  scopeBtnOn: { backgroundColor: colors.sage },
+  scopeText: { color: colors.star, fontWeight: '600', fontSize: 12.5 },
+  scopeTextOn: { color: colors.navy, fontWeight: '700' },
   filters: { paddingHorizontal: 14, paddingBottom: 10, gap: 6 },
   group: { flexDirection: 'row', gap: 6 },
   chip: {

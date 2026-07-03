@@ -2,13 +2,15 @@
 // Run: npm test  (npx tsx src/engine/sage.test.ts)
 
 import assert from 'node:assert/strict';
+import { activeArenaSurvs, arenaResult, arenaStats } from './arena';
 import { buildDrafts, categoryQuestion, timeContext } from './drafts';
+import { adviseOption, advisorRationale, getPopulation, makeAvatar, pickAdvisor, POPULATION_SIZE } from './population';
 import { currentActivity, parseIcs, upcomingEvents } from './schedule';
 import { suggestConnections } from './connections';
 import { buildDigest } from './digest';
 import { TRENDING_SURVS } from './trending';
 import { smartCheck, smartScore } from './smart';
-import { applyOutcome, formatRemaining, getPairTrust, tally, voterWeight, winningOption } from './sage';
+import { applyArenaResult, applyOutcome, formatRemaining, getPairTrust, tally, voterWeight, winningOption } from './sage';
 import { detectCategory, suggestOptionsHeuristic, topInfluencer } from './suggest';
 import { seedNests, seedUsers } from './seed';
 import type { Surv, User } from './types';
@@ -393,6 +395,65 @@ test('rejected labels never come back in suggestions', () => {
     `"${rejectedLabel}" should have been excluded`,
   );
   assert.ok(second.options.length > 0, 'replacements still generated');
+});
+
+// ---- the AI population + public arena ----
+
+test('population: 1000 deterministic avatars with real profiles', () => {
+  const pop = getPopulation();
+  assert.ok(pop.length >= POPULATION_SIZE, `expected >= ${POPULATION_SIZE}, got ${pop.length}`);
+  assert.ok(pop.every((u) => u.isAI), 'all population members are AI-labeled');
+  // deterministic: same index → identical avatar
+  assert.deepEqual(makeAvatar(42), makeAvatar(42));
+  const sample = makeAvatar(7);
+  assert.ok(sample.name.includes(' ') && sample.clout >= 30 && Object.keys(sample.categorySage).length >= 2);
+});
+
+test('advisors are informed, not random: rated options win', () => {
+  const options = [
+    { id: 'a', label: 'Random spot', source: 'user' as const },
+    { id: 'b', label: 'Ruby of Siam', source: 'yelp' as const, why: '4.5★ on Yelp near you' },
+    { id: 'c', label: 'Lower rated', source: 'yelp' as const, why: '3.9★ on Yelp near you' },
+  ];
+  const advisor = pickAdvisor('Food', new Set(), 123);
+  assert.ok((advisor.categorySage.Food ?? 0) >= 55, 'advisor should be a category sage');
+  const choice = adviseOption(advisor, options, 5);
+  assert.equal(choice.id, 'b', 'highest-rated option should be chosen');
+  const rationale = advisorRationale(advisor, 'Food', choice, 9);
+  assert.ok(rationale.includes('Ruby of Siam') && rationale.includes('4.5★'), rationale);
+});
+
+test('arena: live SURVs stream deterministically with badges and stats', () => {
+  const now = 1_800_000_000_000;
+  const a = activeArenaSurvs(now);
+  const b = activeArenaSurvs(now);
+  assert.deepEqual(a.map((s) => s.id), b.map((s) => s.id), 'deterministic across calls');
+  assert.ok(a.length >= 10, `expected a busy arena, got ${a.length}`);
+  assert.ok(a[0].badges.includes('🏆 Top SURV'));
+  assert.ok(a.every((s) => s.expiresAt > now && s.createdAt <= now));
+  const stats = arenaStats(now);
+  assert.ok(stats.liveNow > 2000 && stats.votesLastHour > 9000, 'thousands of SURVs an hour');
+});
+
+test('arena outcomes settle deterministically after expiry', () => {
+  const now = 1_800_000_000_000;
+  const live = activeArenaSurvs(now)[0];
+  assert.equal(arenaResult(live.id, now), null, 'no result while live');
+  const later = live.expiresAt + 1;
+  const result = arenaResult(live.id, later);
+  assert.ok(result && result.actedIndex >= 0 && ['good', 'bad'].includes(result.outcome));
+  assert.deepEqual(result, arenaResult(live.id, later), 'same result every time');
+});
+
+test('helping strangers decide well trains YOUR sage', () => {
+  const you: User = { ...me, categorySage: { ...me.categorySage }, pairTrust: {} };
+  const before = you.categorySage.Food ?? 30;
+  const cloutBefore = you.clout;
+  applyArenaResult(you, 'Food', true, 'good');
+  assert.ok((you.categorySage.Food ?? 0) > before, 'aligned good call grows sage');
+  assert.equal(you.clout, cloutBefore + 1);
+  applyArenaResult(you, 'Food', true, 'bad');
+  assert.ok(you.clout <= cloutBefore + 1, 'backing a bad call costs clout');
 });
 
 console.log(`\nSAGE engine: ${passed} tests passed`);

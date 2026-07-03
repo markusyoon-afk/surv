@@ -57,6 +57,8 @@ export interface User {
   /** Asker→voter historical trust, 0–1, keyed by voter id. Starts 0.5. */
   pairTrust: Record<string, number>;
   connectors: ConnectorId[];
+  /** AI avatar population member (clearly labeled in the UI). */
+  isAI?: boolean;
 }
 
 export type OptionSource = 'user' | 'ai' | 'yelp' | 'google_reviews' | 'history' | 'nest' | 'places';
