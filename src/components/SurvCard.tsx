@@ -23,13 +23,24 @@ export function SageBar({ pct, label, mine, acted }: { pct: number; label: strin
 }
 
 export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) => void }) {
-  const { me, userById, castVote } = useSurv();
+  const { me, userById, castVote, actOn, grade } = useSurv();
+  const [impact, setImpact] = React.useState<string | null>(null);
   const asker = userById(surv.askerId);
   const myVote = surv.votes.find((v) => v.userId === me.id);
   const isMine = surv.askerId === me.id;
   const live = surv.status === 'live' && msRemaining(surv) > 0;
   const results = tally(surv);
   const showResults = !!myVote || isMine || !live;
+  const needsAct = isMine && !live && surv.status === 'deciding';
+  const needsVerdict = isMine && surv.status === 'acted';
+
+  const doGrade = (outcome: 'good' | 'bad') => {
+    const summary = grade(surv.id, outcome);
+    if (summary) {
+      setImpact(summary);
+      setTimeout(() => setImpact(null), 7000);
+    }
+  };
 
   return (
     <Pressable style={styles.card} onPress={() => onOpen(surv)}>
@@ -79,6 +90,35 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
               {opt.why ? <Text style={styles.voteWhy}>{opt.why}</Text> : null}
             </Pressable>
           ))}
+
+      {needsAct && (
+        <View style={styles.actRow}>
+          <Text style={styles.actLabel}>⏳ Flight’s over — what did you do?</Text>
+          <View style={styles.actBtns}>
+            {surv.options.map((opt) => (
+              <Pressable key={opt.id} style={styles.actBtn} onPress={() => actOn(surv.id, opt.id)}>
+                <Text style={styles.actBtnText} numberOfLines={1}>{opt.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {needsVerdict && (
+        <View style={styles.verdictRow}>
+          <Text style={styles.actLabel}>How did it turn out?</Text>
+          <View style={styles.verdictBtns}>
+            <Pressable style={[styles.verdictBtn, styles.goodBtn]} onPress={() => doGrade('good')}>
+              <Text style={styles.verdictText}>👍 Good call</Text>
+            </Pressable>
+            <Pressable style={[styles.verdictBtn, styles.badBtn]} onPress={() => doGrade('bad')}>
+              <Text style={styles.verdictText}>👎 Bad call</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
+      {impact && <Text style={styles.impact}>{impact}</Text>}
 
       <Text style={styles.footer}>
         {surv.votes.length} vote{surv.votes.length === 1 ? '' : 's'}
@@ -147,4 +187,16 @@ const styles = StyleSheet.create({
   voteBtnText: { color: colors.ink, fontWeight: '700', fontSize: 14 },
   voteWhy: { color: colors.inkSoft, fontSize: 12, marginTop: 2 },
   footer: { color: colors.inkFaint, fontSize: 12, marginTop: 4 },
+  actRow: { marginTop: 4, marginBottom: 4 },
+  actLabel: { color: colors.owlDeep, fontWeight: '800', fontSize: 12.5, marginBottom: 6 },
+  actBtns: { gap: 6 },
+  actBtn: { backgroundColor: colors.owl, borderRadius: radius.button, paddingVertical: 8, paddingHorizontal: 12 },
+  actBtnText: { color: colors.white, fontWeight: '700', fontSize: 13 },
+  verdictRow: { marginTop: 4, marginBottom: 4 },
+  verdictBtns: { flexDirection: 'row', gap: 8 },
+  verdictBtn: { flex: 1, borderRadius: radius.button, paddingVertical: 10, alignItems: 'center' },
+  goodBtn: { backgroundColor: '#dcefdf' },
+  badBtn: { backgroundColor: '#f3ddd8' },
+  verdictText: { color: colors.ink, fontWeight: '800', fontSize: 13.5 },
+  impact: { color: colors.owlDeep, fontWeight: '700', fontSize: 12.5, marginTop: 6 },
 });

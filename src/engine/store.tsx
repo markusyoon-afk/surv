@@ -81,7 +81,8 @@ interface SurvStore {
     durationMs: number;
   }) => Surv;
   actOn: (survId: string, optionId: string) => void;
-  grade: (survId: string, outcome: Outcome) => void;
+  /** Grade a decision; returns an instant human-readable SAGE impact summary. */
+  grade: (survId: string, outcome: Outcome) => string | null;
   addComment: (survId: string, text: string) => void;
   extendSurv: (survId: string, extraMs: number) => void;
   sweepExpired: () => void;
@@ -473,7 +474,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
 
       grade: (survId, outcome) => {
         const surv = survs.find((s) => s.id === survId);
-        if (!surv || surv.status !== 'acted') return;
+        if (!surv || surv.status !== 'acted') return null;
         // Deep-copy users so applyOutcome's mutations become a clean state update.
         const copies = new Map(
           users.map((u) => [
@@ -481,13 +482,26 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             { ...u, categorySage: { ...u.categorySage }, categoryN: { ...u.categoryN }, pairTrust: { ...u.pairTrust } },
           ]),
         );
-        applyOutcome({ ...surv }, outcome, copies);
+        const deltas = applyOutcome({ ...surv }, outcome, copies);
         setUsers([...copies.values()]);
         setSurvs((prev) =>
           prev.map((s) =>
             s.id === survId ? { ...s, status: 'graded', outcome, gradedAt: Date.now() } : s,
           ),
         );
+        // Instant feedback: headline the biggest earned gain, never a footnote loss.
+        const gainers = deltas.filter((d) => d.categorySageDelta > 0);
+        const top = gainers.sort((a, b) => b.categorySageDelta - a.categorySageDelta)[0];
+        const topUser = top ? copies.get(top.userId) : null;
+        const topLine =
+          top && topUser
+            ? `${topUser.name.split(' ')[0]} +${Math.round(top.categorySageDelta * 10) / 10} ${surv.category} SAGE · `
+            : outcome === 'good'
+              ? 'the crowd leaned the other way — your call stands · '
+              : '';
+        return outcome === 'good'
+          ? `👍 Good call locked in — ${topLine}your Clout +1`
+          : `👎 Noted — ${topLine}your Clout +1`;
       },
 
       addComment: (survId, text) => {
