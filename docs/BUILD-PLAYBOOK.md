@@ -60,6 +60,15 @@ web-assets/    manifest · sw.js · icons
 - **Test battery as ratchet**: `npm test` = regression + stress/validation/quality
   suites; every feature lands with tests so future edits can't silently regress
   (the SMART gate caught 3 real bugs the day it was written).
+- **Browser pressure loop for UI flows**: engine tests can't catch a silently
+  disabled button. Install a runner on `window` via preview eval (fire pointer +
+  mouse events on RN-web pressables, randomized paths and delays, assert the
+  outcome landed in the feed), launch fire-and-forget, poll a counter. 100
+  randomized composer runs caught the type-then-instant-Post dead window that
+  unit tests never would.
+- **Actions never fail silently**: every primary action either completes,
+  auto-fills what's missing (zero-click doctrine), or says exactly what it
+  needs — a button that no-ops reads as "the app is broken."
 
 ## 5. Hard-won pitfalls (read before touching)
 

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Tap } from '../components/Tap';
 import { buildDrafts, categoryQuestion, type SurvDraft } from '../engine/drafts';
-import { suggestOptions, type SuggestContext } from '../engine/suggest';
+import { suggestOptions, suggestOptionsHeuristic, type SuggestContext } from '../engine/suggest';
 import { useSurv } from '../engine/store';
 import { TRENDING_SURVS, type TrendingSurv } from '../engine/trending';
 import { CATEGORIES, type Category, type SurvOption } from '../engine/types';
@@ -57,6 +57,10 @@ export function NewSurv({
   const [rejected, setRejected] = useState<string[]>([]);
   // Flight controls stay tucked away — the defaults are already optimal.
   const [showFlight, setShowFlight] = useState(false);
+  // Post never fails silently — when something is missing, this says what.
+  const [postHint, setPostHint] = useState<string | null>(null);
+  // A hand-typed question a category tap replaced — one tap restores it.
+  const [stashedQ, setStashedQ] = useState<string | null>(null);
   // Only lock the category into suggestions when the user actually chose it.
   const [categoryPicked, setCategoryPicked] = useState(false);
   // Labels already offered — ✨ Suggest pages through to the NEXT three.
@@ -184,17 +188,21 @@ export function NewSurv({
   // Questions already offered per category this session — every tap rotates fresh.
   const qHistory = useRef<Partial<Record<Category, string[]>>>({});
 
-  /** Tap a category → a fresh relevant SURV drafted for it (habits + time + place). */
+  /**
+   * Tap a category → a fresh relevant SURV drafted for it, every time.
+   * Hand-typed words aren't lost — they're stashed behind a one-tap restore.
+   */
   const tapCategory = (c: Category) => {
     setCategory(c);
     setCategoryPicked(true);
-    if (question.trim() !== '' && !questionIsAuto.current) return; // user's own words stay
+    if (question.trim() !== '' && !questionIsAuto.current) setStashedQ(question);
     const mySurvs = survs.filter((s) => s.askerId === me.id);
     const seen = qHistory.current[c] ?? [];
     const q = categoryQuestion(c, mySurvs, new Date(), geo?.city, [...seen, question]);
     qHistory.current[c] = [...seen, q].slice(-8);
     questionIsAuto.current = true;
     setQuestion(q);
+    setPostHint(null);
     setShown([]);
     setOptions((prev) => prev.filter((o) => o.source === 'user'));
     suggestFor(q, c);
@@ -248,12 +256,41 @@ export function NewSurv({
 
   const canPost = question.trim().length >= 8 && options.length >= 2 && (isPublic || nestIds.length > 0);
 
+  /**
+   * Post never plays dead: missing options are auto-filled on the spot
+   * (zero-click doctrine), and anything else missing gets a plain hint.
+   */
   const post = () => {
-    if (!canPost) return;
+    const q = question.trim();
+    if (q.length < 8) {
+      setPostHint('Ask a question first — at least 8 characters.');
+      return;
+    }
+    if (!isPublic && nestIds.length === 0) {
+      setPostHint('Pick who decides — a Nest, your Tree, or the Forest.');
+      return;
+    }
+    let cat = category;
+    let finalOptions = options;
+    if (finalOptions.length < 2) {
+      const result = suggestOptionsHeuristic(q, me, 3, {
+        ...suggestCtx(),
+        categoryHint: categoryPicked ? category : undefined,
+        excludeLabels: rejected,
+      });
+      const have = new Set(finalOptions.map((o) => o.label));
+      finalOptions = [...finalOptions, ...result.options.filter((o) => !have.has(o.label))].slice(0, 4);
+      if (!categoryPicked) cat = result.category;
+      if (finalOptions.length < 2) {
+        setPostHint('Add at least two options for your circle to weigh.');
+        return;
+      }
+    }
+    setPostHint(null);
     createSurv({
-      question: question.trim(),
-      category,
-      options,
+      question: q,
+      category: cat,
+      options: finalOptions,
       audience: isPublic ? { kind: 'public' } : { kind: 'nests', nestIds },
       durationMs: duration,
     });
@@ -261,6 +298,8 @@ export function NewSurv({
     setOptions([]);
     setCategoryPicked(false);
     setRejected([]);
+    setStashedQ(null);
+    questionIsAuto.current = false;
     onPosted();
   };
 
@@ -299,11 +338,27 @@ export function NewSurv({
           value={question}
           onChangeText={(t) => {
             questionIsAuto.current = false;
+            setPostHint(null);
             setQuestion(t.slice(0, MAX_Q));
           }}
           multiline
         />
         <Text style={styles.counter}>{MAX_Q - question.length}</Text>
+        {stashedQ && (
+          <Tap
+            style={styles.restoreRow}
+            onPress={() => {
+              questionIsAuto.current = false;
+              setQuestion(stashedQ);
+              setStashedQ(null);
+            }}
+          >
+            <Ionicons name="arrow-undo" size={12} color={colors.owlDeep} />
+            <Text style={styles.restoreText} numberOfLines={1}>
+              Restore your question — “{stashedQ}”
+            </Text>
+          </Tap>
+        )}
 
         <View style={styles.rowBetween}>
           <Text style={styles.label}>Pick a category</Text>
@@ -348,6 +403,11 @@ export function NewSurv({
             )}
           </Tap>
         </View>
+        {options.length > 0 && (
+          <Text style={styles.optHint}>
+            All of these launch with your question — tap the text to edit, ↻ swaps in a new one.
+          </Text>
+        )}
         {options.map((opt) => (
           <View key={opt.id} style={styles.option}>
             <Tap style={{ flex: 1 }} onPress={() => editOption(opt)}>
@@ -436,6 +496,7 @@ export function NewSurv({
         <Tap style={[styles.survit, !canPost && styles.survitOff]} onPress={post}>
           <Text style={styles.survitText}>Post</Text>
         </Tap>
+        {postHint && <Text style={styles.postHint}>{postHint}</Text>}
       </View>
     </ScrollView>
   );
@@ -538,6 +599,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   counter: { alignSelf: 'flex-end', color: colors.inkFaint, fontSize: 11, marginTop: 2 },
+  restoreRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  restoreText: { color: colors.owlDeep, fontSize: 11.5, fontWeight: '600', flex: 1 },
+  optHint: { color: colors.inkFaint, fontSize: 11, marginBottom: 6, marginTop: 2 },
+  postHint: { color: colors.danger, fontWeight: '700', fontSize: 12.5, textAlign: 'center', marginTop: 8 },
   label: { color: colors.inkSoft, fontWeight: '800', fontSize: 12.5, marginTop: 12, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: radius.chip, backgroundColor: colors.panelDeep },

@@ -87,16 +87,24 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
               acted={surv.actedOptionId === r.optionId}
             />
           ))
-        : surv.options.map((opt) => (
-            <Tap
-              key={opt.id}
-              style={styles.voteBtn}
-              onPress={() => castVote(surv.id, opt.id)}
-            >
-              <Text style={styles.voteBtnText}>{opt.label}</Text>
-              {opt.why ? <Text style={styles.voteWhy}>{opt.why}</Text> : null}
-            </Tap>
-          ))}
+        : (
+          <>
+            <Text style={styles.pickHint}>Tap your pick — one vote, weighted by your SAGE</Text>
+            {surv.options.map((opt) => (
+              <Tap
+                key={opt.id}
+                style={styles.voteBtn}
+                onPress={() => castVote(surv.id, opt.id)}
+              >
+                <Ionicons name="ellipse-outline" size={17} color={colors.inkFaint} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.voteBtnText}>{opt.label}</Text>
+                  {opt.why ? <Text style={styles.voteWhy}>{opt.why}</Text> : null}
+                </View>
+              </Tap>
+            ))}
+          </>
+        )}
 
       {isMine && live && surv.options.length < 4 && (
         <Tap style={styles.addOptBtn} onPress={() => addSuggestedOption(surv.id)}>
@@ -188,7 +196,11 @@ const styles = StyleSheet.create({
   barActed: { backgroundColor: colors.owl },
   barLabel: { color: colors.ink, fontSize: 13, fontWeight: '600', paddingHorizontal: 10 },
   barPct: { color: colors.owlDeep, fontWeight: '800', fontSize: 14, width: 52, textAlign: 'right' },
+  pickHint: { color: colors.inkFaint, fontSize: 11.5, fontWeight: '600', marginBottom: 6 },
   voteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
     backgroundColor: colors.white,
     borderRadius: radius.button,
     borderWidth: 1,
