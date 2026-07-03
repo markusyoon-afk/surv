@@ -2,7 +2,9 @@
 
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { DraftCards } from '../components/DraftCards';
 import { SurvCard } from '../components/SurvCard';
+import type { SurvDraft } from '../engine/drafts';
 import { msRemaining } from '../engine/sage';
 import { useSurv } from '../engine/store';
 import type { Surv } from '../engine/types';
@@ -11,7 +13,13 @@ import { colors, radius } from '../theme';
 type Visibility = 'all' | 'public' | 'private';
 type Responded = 'all' | 'responded' | 'not';
 
-export function HomeFeed({ onOpen }: { onOpen: (surv: Surv) => void }) {
+export function HomeFeed({
+  onOpen,
+  onDraft,
+}: {
+  onOpen: (surv: Surv) => void;
+  onDraft: (draft: SurvDraft) => void;
+}) {
   const { me, survs } = useSurv();
   const [visibility, setVisibility] = useState<Visibility>('all');
   const [responded, setResponded] = useState<Responded>('all');
@@ -35,6 +43,7 @@ export function HomeFeed({ onOpen }: { onOpen: (surv: Surv) => void }) {
 
   return (
     <View style={{ flex: 1 }}>
+      <DraftCards horizontal onSelect={onDraft} />
       <View style={styles.filters}>
         <FilterGroup
           value={visibility}

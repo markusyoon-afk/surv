@@ -22,6 +22,12 @@ Web preview: `npm run web` · Engine tests: `npm test` · Types: `npm run typech
 
 ## What works today (v1, on-device)
 
+- **Quick SURV drafts** — schedule- and habit-aware one-tap drafts ("Lunch hour →
+  What should I grab for lunch?"); your recurring SURVs resurface as "your usual",
+  already-asked questions are suppressed, and your posting habits boost matching drafts
+- **Ranked top-3 options** — suggestions scored by ratings (Yelp/Google), Nest trends,
+  and your influencers: the highest category-SAGE person in your Nests gets named
+  attribution on the top pick
 - The Nest feed with the original filters (All/Public/Private · Responded/Not) and live
   countdowns (30s heartbeat; expired SURVs auto-flip to "deciding")
 - +SURV: question → **✨ Suggest options** (heuristic + mocked Yelp/Google/Nest signals;

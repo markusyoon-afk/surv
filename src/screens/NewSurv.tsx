@@ -1,6 +1,6 @@
 // +SURV — post a decision. Question → AI-suggested options → duration → audience → SURVit!
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -10,6 +10,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { DraftCards } from '../components/DraftCards';
+import type { SurvDraft } from '../engine/drafts';
 import { suggestOptions } from '../engine/suggest';
 import { useSurv } from '../engine/store';
 import { CATEGORIES, type Category, type SurvOption } from '../engine/types';
@@ -27,8 +29,16 @@ const DURATIONS: Array<[string, number]> = [
 
 const MAX_Q = 140;
 
-export function NewSurv({ onPosted }: { onPosted: () => void }) {
-  const { me, nests, createSurv } = useSurv();
+export function NewSurv({
+  onPosted,
+  initialDraft,
+  onDraftConsumed,
+}: {
+  onPosted: () => void;
+  initialDraft?: SurvDraft | null;
+  onDraftConsumed?: () => void;
+}) {
+  const { me, users, nests, createSurv } = useSurv();
   const [question, setQuestion] = useState('');
   const [category, setCategory] = useState<Category>('Living');
   const [options, setOptions] = useState<SurvOption[]>([]);
@@ -42,10 +52,10 @@ export function NewSurv({ onPosted }: { onPosted: () => void }) {
     (n) => n.ownerId === me.id || n.members.some((m) => m.userId === me.id),
   );
 
-  const suggest = async () => {
+  const suggestFor = async (q: string) => {
     setBusy(true);
     try {
-      const result = await suggestOptions(question, me);
+      const result = await suggestOptions(q, me, 3, { users, nests });
       setCategory(result.category);
       setOptions((prev) => {
         const kept = prev.filter((o) => o.source === 'user');
@@ -55,6 +65,26 @@ export function NewSurv({ onPosted }: { onPosted: () => void }) {
       setBusy(false);
     }
   };
+
+  const suggest = () => suggestFor(question);
+
+  /** One tap: prefill the routine decision and load its top-3 options. */
+  const applyDraft = (draft: SurvDraft) => {
+    setQuestion(draft.question);
+    setCategory(draft.category);
+    const preset = DURATIONS.find(([, ms]) => ms >= draft.durationMs);
+    setDuration(preset ? preset[1] : DURATIONS[0][1]);
+    setOptions([]);
+    suggestFor(draft.question);
+  };
+
+  useEffect(() => {
+    if (initialDraft) {
+      applyDraft(initialDraft);
+      onDraftConsumed?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialDraft]);
 
   const addManual = () => {
     const label = manual.trim();
@@ -81,6 +111,7 @@ export function NewSurv({ onPosted }: { onPosted: () => void }) {
 
   return (
     <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
+      {question.trim() === '' && options.length === 0 && <DraftCards onSelect={applyDraft} />}
       <View style={styles.card}>
         <TextInput
           style={styles.question}

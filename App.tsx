@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { NightSky } from './src/components/NightSky';
 import { Onboarding } from './src/components/Onboarding';
+import type { SurvDraft } from './src/engine/drafts';
 import { clearShareHash, parseShareHash } from './src/lib/share';
 import { SurvProvider, useSurv } from './src/engine/store';
 import type { Surv } from './src/engine/types';
@@ -30,6 +31,7 @@ function Shell() {
   const [openSurv, setOpenSurv] = useState<Surv | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [importNotice, setImportNotice] = useState<string | null>(null);
+  const [draft, setDraft] = useState<SurvDraft | null>(null);
   const { me, survs, sweepExpired, setMyName, importSurv, importVote, hydrated } = useSurv();
   const dueForMe = survs.filter(
     (s) => s.askerId === me.id && (s.status === 'acted' || s.status === 'deciding'),
@@ -101,8 +103,22 @@ function Shell() {
         </View>
 
         <View style={{ flex: 1 }}>
-          {tab === 'home' && <HomeFeed onOpen={setOpenSurv} />}
-          {tab === 'new' && <NewSurv onPosted={() => setTab('home')} />}
+          {tab === 'home' && (
+            <HomeFeed
+              onOpen={setOpenSurv}
+              onDraft={(d) => {
+                setDraft(d);
+                setTab('new');
+              }}
+            />
+          )}
+          {tab === 'new' && (
+            <NewSurv
+              onPosted={() => setTab('home')}
+              initialDraft={draft}
+              onDraftConsumed={() => setDraft(null)}
+            />
+          )}
           {tab === 'nests' && <Nests />}
           {tab === 'profile' && <Profile />}
         </View>

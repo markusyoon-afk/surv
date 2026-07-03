@@ -2,8 +2,9 @@
 // Run: npm test  (npx tsx src/engine/sage.test.ts)
 
 import assert from 'node:assert/strict';
+import { buildDrafts, timeContext } from './drafts';
 import { applyOutcome, formatRemaining, getPairTrust, tally, voterWeight, winningOption } from './sage';
-import { detectCategory, suggestOptionsHeuristic } from './suggest';
+import { detectCategory, suggestOptionsHeuristic, topInfluencer } from './suggest';
 import { seedNests, seedUsers } from './seed';
 import type { Surv, User } from './types';
 
@@ -132,6 +133,74 @@ test('connector-enriched suggestions for food questions', () => {
 test('countdown formatting matches the beta tooltip style', () => {
   assert.equal(formatRemaining(20 * 3600_000 + 59 * 60_000), '20 hrs: 59 min');
   assert.equal(formatRemaining(0), 'Expired');
+});
+
+// ---- habit/schedule drafts ----
+
+const wedNoon = new Date(2026, 6, 1, 12, 15); // Wednesday, lunch hour
+const HOUR_MS = 3600_000;
+
+function mkSurv(question: string, createdAt: number, category: Surv['category'] = 'Food'): Surv {
+  return {
+    id: `t_${createdAt}_${question.length}`,
+    askerId: me.id,
+    question,
+    category,
+    options: [{ id: 'a', label: 'A', source: 'user' }],
+    audience: { kind: 'public' },
+    createdAt,
+    expiresAt: createdAt + HOUR_MS,
+    status: 'graded',
+    votes: [],
+  };
+}
+
+test('lunch draft appears at lunch hour', () => {
+  assert.equal(timeContext(wedNoon).slot, 'midday');
+  const drafts = buildDrafts([], me, wedNoon);
+  assert.ok(drafts.some((d) => d.question.toLowerCase().includes('lunch')));
+});
+
+test('drafts suppress questions already asked today', () => {
+  const asked = mkSurv('What should I grab for lunch?', wedNoon.getTime() - 2 * HOUR_MS);
+  const drafts = buildDrafts([asked], me, wedNoon);
+  assert.ok(!drafts.some((d) => d.question === 'What should I grab for lunch?'));
+});
+
+test('habits boost matching categories', () => {
+  const foodHistory = [
+    mkSurv('Old dinner question one', wedNoon.getTime() - 5 * 24 * HOUR_MS),
+    mkSurv('Old dinner question two', wedNoon.getTime() - 3 * 24 * HOUR_MS),
+  ];
+  const plain = buildDrafts([], me, wedNoon).find((d) => d.question.includes('lunch'));
+  const boosted = buildDrafts(foodHistory, me, wedNoon).find((d) => d.question.includes('lunch'));
+  assert.ok(plain && boosted && boosted.score > plain.score);
+});
+
+test('recurring SURVs resurface as your usual', () => {
+  const history = [
+    mkSurv('Poker night — am I in?', wedNoon.getTime() - 8 * 24 * HOUR_MS, 'Entertainment'),
+    mkSurv('Poker night — am I in?', wedNoon.getTime() - 1 * 24 * HOUR_MS, 'Entertainment'),
+  ];
+  const drafts = buildDrafts(history, me, wedNoon);
+  const usual = drafts.find((d) => d.question === 'Poker night — am I in?');
+  assert.ok(usual, 'recurring question should resurface');
+  assert.ok(usual!.reason.includes('2×'));
+});
+
+// ---- ranked top-3 suggestions ----
+
+test('suggestions return exactly top 3, ratings first', () => {
+  const { options } = suggestOptionsHeuristic('Where should we eat dinner?', me, 3, { users, nests });
+  assert.equal(options.length, 3);
+  assert.ok(options[0].why?.includes('★'), 'top pick should carry a rating');
+});
+
+test('your strongest sage gets named attribution on the top pick', () => {
+  const inf = topInfluencer(me, 'Food', { users, nests });
+  assert.equal(inf?.user.id, linda.id); // Food sage 81, shares the Foodies nest
+  const { options } = suggestOptionsHeuristic('Where should we eat dinner?', me, 3, { users, nests });
+  assert.ok(options[0].why?.includes('Linda'), `expected attribution, got: ${options[0].why}`);
 });
 
 console.log(`\nSAGE engine: ${passed} tests passed`);

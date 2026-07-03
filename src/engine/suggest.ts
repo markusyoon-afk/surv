@@ -2,7 +2,13 @@
 // v1 ships with heuristic + mocked connectors; set EXPO_PUBLIC_ANTHROPIC_KEY to enable
 // live Claude generation (see PRODUCT_SPEC.md §2).
 
-import type { Category, SurvOption, User } from './types';
+import type { Category, Nest, OptionSource, SurvOption, User } from './types';
+
+/** Optional social context: lets suggestions rank by real influencers in your Nests. */
+export interface SuggestContext {
+  users?: User[];
+  nests?: Nest[];
+}
 
 let optionSeq = 0;
 const oid = () => `opt_${Date.now()}_${optionSeq++}`;
@@ -79,33 +85,94 @@ const GENERIC_TEMPLATES: Record<Category, string[]> = {
   Relationships: ['Reach out first', 'Give it space', 'Plan something together'],
 };
 
-/** Heuristic path: history + connectors + templates → up to `count` options. */
+/** The highest category-SAGE person who shares a Nest with you — your influencer. */
+export function topInfluencer(
+  me: User,
+  category: Category,
+  ctx?: SuggestContext,
+): { user: User; sage: number } | null {
+  if (!ctx?.users || !ctx?.nests) return null;
+  const nestmates = new Set<string>();
+  for (const n of ctx.nests) {
+    const mine = n.ownerId === me.id || n.members.some((m) => m.userId === me.id);
+    if (!mine) continue;
+    for (const m of n.members) if (m.userId !== me.id) nestmates.add(m.userId);
+    if (n.ownerId !== me.id) nestmates.add(n.ownerId);
+  }
+  let best: { user: User; sage: number } | null = null;
+  for (const u of ctx.users) {
+    if (!nestmates.has(u.id)) continue;
+    const sage = u.categorySage[category] ?? 0;
+    if (sage >= 50 && (!best || sage > best.sage)) best = { user: u, sage };
+  }
+  return best;
+}
+
+interface Candidate {
+  label: string;
+  source: OptionSource;
+  why: string;
+  score: number;
+}
+
+/**
+ * Heuristic path: candidates from connectors (scored by rating), Nest trends,
+ * and templates — ranked, top influencer attributed, top `count` returned.
+ */
 export function suggestOptionsHeuristic(
   question: string,
   user: User,
   count = 3,
+  ctx?: SuggestContext,
 ): { category: Category; options: SurvOption[] } {
   const category = detectCategory(question);
-  const options: SurvOption[] = [];
+  const candidates: Candidate[] = [];
 
   if (user.connectors.includes('yelp')) {
     for (const hit of YELP_MOCK[category] ?? []) {
-      options.push({ id: oid(), label: hit.name, source: 'yelp', why: `${hit.rating}★ on Yelp near you` });
+      candidates.push({
+        label: hit.name,
+        source: 'yelp',
+        why: `${hit.rating}★ on Yelp near you`,
+        score: hit.rating * 18 + 8, // ratings drive rank
+      });
     }
   }
   if (user.connectors.includes('google_reviews')) {
     for (const hit of GOOGLE_REVIEWS_MOCK[category] ?? []) {
-      options.push({ id: oid(), label: hit.name, source: 'google_reviews', why: 'Top-rated on Google near you' });
+      candidates.push({
+        label: hit.name,
+        source: 'google_reviews',
+        why: `${hit.rating}★ on Google near you`,
+        score: hit.rating * 18 + 4,
+      });
     }
   }
   for (const signal of NEST_SIGNAL_MOCK[category] ?? []) {
-    options.push({ id: oid(), label: signal, source: 'nest', why: 'Trending in your Nests' });
+    candidates.push({ label: signal, source: 'nest', why: 'Trending in your Nests', score: 72 });
   }
-  for (const template of GENERIC_TEMPLATES[category]) {
-    if (options.length >= count) break;
-    options.push({ id: oid(), label: template, source: 'ai', why: 'Based on your past SURVs' });
+  GENERIC_TEMPLATES[category].forEach((template, i) => {
+    candidates.push({ label: template, source: 'ai', why: 'Based on your past SURVs', score: 44 - i * 6 });
+  });
+
+  candidates.sort((a, b) => b.score - a.score);
+
+  // Attribute the leading pick to your strongest sage in this category.
+  const influencer = topInfluencer(user, category, ctx);
+  if (influencer && candidates.length > 0 && candidates[0].source !== 'ai') {
+    candidates[0].why += ` · ${influencer.user.name}’s pick (${category} sage ${Math.round(influencer.sage)}%)`;
+    candidates[0].score += 10;
   }
-  return { category, options: options.slice(0, count) };
+
+  return {
+    category,
+    options: candidates.slice(0, count).map((c) => ({
+      id: oid(),
+      label: c.label,
+      source: c.source,
+      why: c.why,
+    })),
+  };
 }
 
 /**
@@ -116,10 +183,11 @@ export async function suggestOptions(
   question: string,
   user: User,
   count = 3,
+  ctx?: SuggestContext,
 ): Promise<{ category: Category; options: SurvOption[] }> {
   const apiKey = await getClaudeKey();
   if (!apiKey || question.trim().length < 8) {
-    return suggestOptionsHeuristic(question, user, count);
+    return suggestOptionsHeuristic(question, user, count, ctx);
   }
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -159,6 +227,6 @@ export async function suggestOptions(
       })),
     };
   } catch {
-    return suggestOptionsHeuristic(question, user, count);
+    return suggestOptionsHeuristic(question, user, count, ctx);
   }
 }
