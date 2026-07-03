@@ -232,17 +232,64 @@ function Shell() {
   );
 }
 
+/** Boot can never dead-end: crashes render a reload screen, not a blank. */
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { broken: boolean }> {
+  state = { broken: false };
+  static getDerivedStateFromError() {
+    return { broken: true };
+  }
+  render() {
+    if (!this.state.broken) return this.props.children;
+    return (
+      <View style={bootStyles.wrap}>
+        <Text style={{ fontSize: 44 }}>🦉</Text>
+        <Text style={bootStyles.title}>A twig snapped.</Text>
+        <Text style={bootStyles.body}>Something went wrong — one tap brings the Tree back.</Text>
+        <Pressable
+          style={bootStyles.btn}
+          onPress={() => {
+            try {
+              if (Platform.OS === 'web' && typeof window !== 'undefined') window.location.reload();
+              else this.setState({ broken: false });
+            } catch {
+              this.setState({ broken: false });
+            }
+          }}
+        >
+          <Text style={bootStyles.btnText}>Reload SURV</Text>
+        </Pressable>
+      </View>
+    );
+  }
+}
+
 export default function App() {
-  const [fontsLoaded] = useFonts({ SpaceGrotesk_500Medium, SpaceGrotesk_700Bold });
-  if (!fontsLoaded) {
+  // Fonts must never block the app: proceed on load, on error, or after 2.5s.
+  const [fontsLoaded, fontError] = useFonts({ SpaceGrotesk_500Medium, SpaceGrotesk_700Bold });
+  const [fontPatience, setFontPatience] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setFontPatience(true), 2500);
+    return () => clearTimeout(t);
+  }, []);
+  if (!fontsLoaded && !fontError && !fontPatience) {
     return <View style={{ flex: 1, backgroundColor: colors.night }} />;
   }
   return (
-    <SurvProvider>
-      <Shell />
-    </SurvProvider>
+    <ErrorBoundary>
+      <SurvProvider>
+        <Shell />
+      </SurvProvider>
+    </ErrorBoundary>
   );
 }
+
+const bootStyles = StyleSheet.create({
+  wrap: { flex: 1, backgroundColor: colors.night, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 10 },
+  title: { color: colors.white, fontSize: 20, fontWeight: '700' },
+  body: { color: colors.star, fontSize: 13.5, textAlign: 'center' },
+  btn: { marginTop: 10, backgroundColor: colors.owl, borderRadius: 24, paddingVertical: 12, paddingHorizontal: 36 },
+  btnText: { color: colors.white, fontWeight: '800', fontSize: 15 },
+});
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
