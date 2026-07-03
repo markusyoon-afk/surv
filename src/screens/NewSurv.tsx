@@ -20,13 +20,13 @@ import { CATEGORIES, type Category, type SurvOption } from '../engine/types';
 import { CATEGORY_ICONS, colors, radius } from '../theme';
 
 const HOUR = 3600_000;
-// Durations the alpha testers voted for in SURV #108 (2011): 1h / 6h / 24h / 3d / 1w
 const DURATIONS: Array<[string, number]> = [
+  ['⚡ ASAP', 5 * 60_000],
   ['1 hr', HOUR],
+  ['3 hrs', 3 * HOUR],
   ['6 hrs', 6 * HOUR],
+  ['12 hrs', 12 * HOUR],
   ['24 hrs', 24 * HOUR],
-  ['3 days', 72 * HOUR],
-  ['1 week', 168 * HOUR],
 ];
 
 const MAX_Q = 140;
@@ -147,7 +147,7 @@ export function NewSurv({
   const applyDraft = (draft: SurvDraft) => {
     setQuestion(draft.question);
     setCategory(draft.category);
-    setDuration(Math.min(Math.max(draft.durationMs, 5 * 60_000), 7 * 24 * HOUR));
+    setDuration(Math.min(Math.max(draft.durationMs, 5 * 60_000), 24 * HOUR));
     if (draft.options && draft.options.length > 0) {
       // Event-specific decisions come with their options pre-baked.
       setOptions(
@@ -199,8 +199,14 @@ export function NewSurv({
     <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
       {question.trim() === '' && options.length === 0 && (
         <View style={styles.ideasWrap}>
-          <Text style={styles.ideasTitle}>IDEAS — ONE TAP AND IT’S DRAFTED</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.ideasStrip}>
+          <View style={styles.ideasHeader}>
+            <Text style={styles.ideasTitle}>IDEAS — ONE TAP AND IT’S DRAFTED</Text>
+            <View style={styles.ideasSwipe}>
+              <Text style={styles.ideasSwipeText}>swipe</Text>
+              <Ionicons name="arrow-forward" size={11} color={colors.sage} />
+            </View>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.ideasStrip}>
             {buildDrafts(survs.filter((s) => s.askerId === me.id), me, new Date(), 4, calendarEvents, healthConnected).map((d) => (
               <Pressable key={d.id} style={styles.ideaCard} onPress={() => applyDraft(d)}>
                 <Text style={styles.ideaReason}>⚡ {d.reason}</Text>
@@ -291,7 +297,7 @@ export function NewSurv({
           </View>
         )}
 
-        <Text style={styles.label}>Countdown — {durationLabel(duration)}</Text>
+        <Text style={styles.label}>Flight — {durationLabel(duration)}</Text>
         <DurationSlider valueMs={duration} onChange={setDuration} />
         <View style={styles.chips}>
           {DURATIONS.map(([label, ms]) => (
@@ -299,9 +305,16 @@ export function NewSurv({
           ))}
         </View>
 
-        <Text style={styles.label}>Who decides with you</Text>
+        <Text style={styles.label}>Your Nest, Tree, or Forest</Text>
         <View style={styles.chips}>
-          <Chip label="🌍 Public" on={isPublic} onPress={() => setIsPublic(!isPublic)} />
+          <Chip label="🌲 The Forest" on={isPublic} onPress={() => setIsPublic(!isPublic)} />
+          {!isPublic && (
+            <Chip
+              label="🌳 My Tree"
+              on={nestIds.length === myNests.length && myNests.length > 0}
+              onPress={() => setNestIds(myNests.map((n) => n.id))}
+            />
+          )}
           {!isPublic &&
             myNests.map((n) => (
               <Chip
@@ -406,16 +419,20 @@ const styles = StyleSheet.create({
   wrap: { padding: 14, paddingBottom: 100 },
   card: { backgroundColor: colors.panel, borderRadius: radius.card, padding: 14 },
   question: {
-    minHeight: 64,
-    fontSize: 16,
+    minHeight: 84,
+    fontSize: 17.5,
     color: colors.ink,
-    fontWeight: '600',
+    fontWeight: '700',
     backgroundColor: colors.white,
-    borderRadius: radius.button,
-    borderWidth: 1,
-    borderColor: colors.chip,
-    padding: 10,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: colors.sage,
+    padding: 13,
     textAlignVertical: 'top',
+    shadowColor: colors.owl,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
   },
   counter: { alignSelf: 'flex-end', color: colors.inkFaint, fontSize: 11, marginTop: 2 },
   label: { color: colors.inkSoft, fontWeight: '800', fontSize: 12.5, marginTop: 12, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
@@ -442,10 +459,13 @@ const styles = StyleSheet.create({
   geoChip: { backgroundColor: colors.panelDeep, borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 5, marginTop: 10 },
   geoChipText: { color: colors.owlDeep, fontWeight: '700', fontSize: 11.5 },
   ideasWrap: { marginBottom: 12 },
-  ideasTitle: { color: colors.sage, fontWeight: '700', fontSize: 10.5, letterSpacing: 1, marginBottom: 7, paddingHorizontal: 2 },
-  ideasStrip: { gap: 8, paddingRight: 8 },
+  ideasHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7, paddingHorizontal: 2 },
+  ideasTitle: { color: colors.sage, fontWeight: '700', fontSize: 10.5, letterSpacing: 1 },
+  ideasSwipe: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  ideasSwipeText: { color: colors.sage, fontSize: 10, fontWeight: '600' },
+  ideasStrip: { gap: 8, paddingRight: 8, paddingBottom: 6 },
   ideaCard: {
-    width: 180,
+    width: 150,
     backgroundColor: colors.nightCard,
     borderRadius: radius.card,
     borderWidth: 1,
@@ -503,15 +523,19 @@ const styles = StyleSheet.create({
   addBtnText: { color: colors.inkSoft, fontWeight: '800' },
   survit: {
     marginTop: 18,
+    alignSelf: 'center',
     backgroundColor: colors.owl,
-    borderRadius: radius.card,
-    paddingVertical: 13,
+    borderRadius: 28,
+    paddingVertical: 14,
+    paddingHorizontal: 52,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: colors.owlDeep,
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    borderWidth: 2,
+    borderColor: colors.sage,
   },
   survitOff: { opacity: 0.45 },
-  survitText: { color: colors.white, fontWeight: '900', fontSize: 17, letterSpacing: 0.5 },
+  survitText: { color: colors.white, fontWeight: '900', fontSize: 18, letterSpacing: 1 },
 });

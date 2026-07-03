@@ -154,7 +154,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             const known = new Set(saved.users.map((u) => u.id));
             const missing = seedUsers().filter((u) => !known.has(u.id));
             setUsers(missing.length > 0 ? [...saved.users, ...missing] : saved.users);
-            setNests(saved.nests);
+            // Migration: the SATT Crew demo nest was retired.
+            setNests(saved.nests.filter((n) => n.id !== 'n_satt'));
             setSurvs(sweep(saved.survs));
             setCalendarEvents(saved.calendarEvents ?? []);
             setGeo(saved.geo ?? null);

@@ -322,8 +322,11 @@ test('smartCheck flags vague, timeless questions', () => {
 test('people you may know: platform overlap ranks first, nest members excluded', () => {
   const sugg = suggestConnections(me, users, nests);
   const names = sugg.map((s) => s.user.name);
-  assert.ok(names.includes('Chang Hee Kim') && names.includes('Thomas Kim'));
-  assert.ok(!names.includes('Mike Lemke'), 'nest members must not be suggested');
+  assert.ok(names.includes('Chang Hee Kim') && names.includes('Mike Lemke'));
+  assert.ok(
+    !names.includes('Linda Chang') && !names.includes('Joseph Yoon'),
+    'nest members must not be suggested',
+  );
   const chang = sugg.find((s) => s.user.name === 'Chang Hee Kim')!;
   assert.ok(chang.sharedPlatforms.includes('yelp'));
   assert.ok(chang.reason.includes('Yelp'));
