@@ -4,6 +4,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { fetchNearbyPlaces, GEO_CATEGORIES, getCurrentPosition, reverseCity, type NearbyPlace } from '../lib/geo';
 import { applyOutcome, voterWeight } from './sage';
 import { parseIcs, type CalEvent } from './schedule';
 import { ME, seedNests, seedSurvs, seedUsers } from './seed';
@@ -20,11 +21,20 @@ import type {
 
 const STORAGE_KEY = 'surv.state.v1';
 
+export interface GeoState {
+  lat: number;
+  lon: number;
+  city: string | null;
+  updatedAt: number;
+}
+
 interface PersistedState {
   users: User[];
   nests: Nest[];
   survs: Surv[];
   calendarEvents?: CalEvent[];
+  geo?: GeoState | null;
+  nearbyPlaces?: Partial<Record<Category, NearbyPlace[]>>;
 }
 
 interface SurvStore {
@@ -33,8 +43,12 @@ interface SurvStore {
   nests: Nest[];
   survs: Surv[];
   calendarEvents: CalEvent[];
+  geo: GeoState | null;
+  nearbyPlaces: Partial<Record<Category, NearbyPlace[]>>;
   hydrated: boolean;
   userById: (id: string) => User | undefined;
+  /** GPS → city + real nearby places per category; suggestions become geolocated. */
+  requestLocation: () => Promise<boolean>;
   /** Paste .ics text (Google Calendar / iCal export) → events feed the drafts engine. */
   importCalendar: (icsText: string) => number;
   setMyName: (name: string) => void;
@@ -102,6 +116,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
   const [nests, setNests] = useState<Nest[]>(seedNests);
   const [survs, setSurvs] = useState<Surv[]>(() => sweep(seedSurvs()));
   const [calendarEvents, setCalendarEvents] = useState<CalEvent[]>([]);
+  const [geo, setGeo] = useState<GeoState | null>(null);
+  const [nearbyPlaces, setNearbyPlaces] = useState<Partial<Record<Category, NearbyPlace[]>>>({});
   const [hydrated, setHydrated] = useState(false);
   const skipNextSave = useRef(false);
 
@@ -118,6 +134,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             setNests(saved.nests);
             setSurvs(sweep(saved.survs));
             setCalendarEvents(saved.calendarEvents ?? []);
+            setGeo(saved.geo ?? null);
+            setNearbyPlaces(saved.nearbyPlaces ?? {});
           }
         }
       } catch {
@@ -135,9 +153,9 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       skipNextSave.current = false;
       return;
     }
-    const state: PersistedState = { users, nests, survs, calendarEvents };
+    const state: PersistedState = { users, nests, survs, calendarEvents, geo, nearbyPlaces };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
-  }, [users, nests, survs, calendarEvents, hydrated]);
+  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, hydrated]);
 
   const store = useMemo<SurvStore>(() => {
     const userById = (id: string) => users.find((u) => u.id === id);
@@ -149,8 +167,35 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       nests,
       survs,
       calendarEvents,
+      geo,
+      nearbyPlaces,
       hydrated,
       userById,
+
+      requestLocation: async () => {
+        const pos = await getCurrentPosition();
+        if (!pos) return false;
+        setGeo({ ...pos, city: null, updatedAt: Date.now() });
+        // Enrich in the background: city name + real places per category.
+        // Overpass rate-limits parallel queries, so fetch sequentially.
+        reverseCity(pos)
+          .then((city) => setGeo((g) => (g ? { ...g, city } : g)))
+          .catch(() => {});
+        (async () => {
+          for (const category of GEO_CATEGORIES) {
+            try {
+              const places = await fetchNearbyPlaces(pos, category);
+              if (places.length > 0) {
+                setNearbyPlaces((prev) => ({ ...prev, [category]: places }));
+              }
+            } catch {
+              // skip category on failure; next location request retries
+            }
+            await new Promise((r) => setTimeout(r, 700));
+          }
+        })();
+        return true;
+      },
 
       importCalendar: (icsText) => {
         const parsed = parseIcs(icsText);
@@ -355,9 +400,11 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         setNests(seedNests());
         setSurvs(sweep(seedSurvs()));
         setCalendarEvents([]);
+        setGeo(null);
+        setNearbyPlaces({});
       },
     };
-  }, [users, nests, survs, calendarEvents, hydrated]);
+  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, hydrated]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

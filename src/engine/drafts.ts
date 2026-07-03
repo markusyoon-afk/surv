@@ -159,3 +159,65 @@ export function buildDrafts(
 
   return drafts.sort((a, b) => b.score - a.score).slice(0, limit);
 }
+
+// ---- category-tap question generation ----
+// Tap a category in +SURV → a ready-made SMART question for right now,
+// learned from the user's own recurring SURVs first, schedule second.
+
+type SlotBank = Partial<Record<TimeSlot, string>> & { default: string };
+
+const CATEGORY_QUESTIONS: Record<Category, SlotBank> = {
+  Food: {
+    morning: 'Breakfast this morning — what’s the move?',
+    midday: 'Lunch today — where should I eat?',
+    afternoon: 'Early dinner or late lunch today — what sounds right?',
+    evening: 'Dinner tonight — where should I go?',
+    night: 'Late-night bite tonight — worth it or sleep?',
+    default: 'Next meal — what should it be?',
+  },
+  Shopping: { default: 'Should I buy it today or wait for a better price this week?' },
+  Living: { default: 'What’s the one errand I should knock out today?' },
+  Entertainment: {
+    evening: 'What should we watch tonight?',
+    night: 'One more episode tonight or save it?',
+    default: 'What’s the entertainment pick for this week?',
+  },
+  Sports: { default: 'Workout today — gym, run, or rest day?' },
+  Tech: { default: 'Upgrade this month or hold for the next release?' },
+  Travel: { default: 'Next weekend trip — where should it be? Deciding by Friday.' },
+  Style: { default: 'New look this week — go for it or keep it classic?' },
+  Work: { default: 'What’s my top priority to finish by end of day?' },
+  Relationships: { default: 'Who should I catch up with this week?' },
+};
+
+/**
+ * A ready-to-post question for a tapped category: the user's own recurring
+ * question in that category wins (machine-learned habit); otherwise a
+ * time-slot-appropriate SMART template, localized with their city when known.
+ */
+export function categoryQuestion(
+  category: Category,
+  mySurvs: Surv[],
+  now: Date = new Date(),
+  city?: string | null,
+): string {
+  // Habit first: a question they've asked 2+ times in this category.
+  const freq = new Map<string, { count: number; question: string }>();
+  for (const s of mySurvs) {
+    if (s.category !== category) continue;
+    const k = norm(s.question);
+    const cur = freq.get(k);
+    if (cur) cur.count += 1;
+    else freq.set(k, { count: 1, question: s.question });
+  }
+  const habitual = [...freq.values()].filter((f) => f.count >= 2).sort((a, b) => b.count - a.count)[0];
+  if (habitual) return habitual.question;
+
+  const { slot } = timeContext(now);
+  const bank = CATEGORY_QUESTIONS[category];
+  let question = bank[slot] ?? bank.default;
+  if (city && (category === 'Food' || category === 'Entertainment' || category === 'Travel')) {
+    question = question.replace(' — ', ` near ${city} — `);
+  }
+  return question;
+}

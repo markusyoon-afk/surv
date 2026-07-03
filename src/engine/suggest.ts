@@ -4,10 +4,19 @@
 
 import type { Category, Nest, OptionSource, SurvOption, User } from './types';
 
-/** Optional social context: lets suggestions rank by real influencers in your Nests. */
+export interface NearbyPlaceLike {
+  name: string;
+  distanceKm: number;
+}
+
+/** Optional social + geo context: real influencers in your Nests, real places near you. */
 export interface SuggestContext {
   users?: User[];
   nests?: Nest[];
+  city?: string | null;
+  placesByCategory?: Partial<Record<Category, NearbyPlaceLike[]>>;
+  /** When the user picked the category explicitly, trust it over text detection. */
+  categoryHint?: Category;
 }
 
 let optionSeq = 0;
@@ -30,7 +39,7 @@ async function getClaudeKey(): Promise<string | null> {
 }
 
 const CATEGORY_KEYWORDS: Array<[Category, RegExp]> = [
-  ['Food', /\b(eat|lunch|dinner|restaurant|food|cook|takeout|brunch|snack|hungry)\b/i],
+  ['Food', /\b(eat|lunch|dinner|breakfast|restaurant|food|cook|takeout|brunch|snack|hungry|bite|meal|pizza|coffee)\b/i],
   ['Shopping', /\b(buy|purchase|gift|shop|deal|order)\b/i],
   ['Sports', /\b(game|team|play|workout|gym|run|basketball|golf|fantasy|start|bench)\b/i],
   ['Tech', /\b(phone|laptop|computer|app|tablet|tech|upgrade|gadget)\b/i],
@@ -125,10 +134,23 @@ export function suggestOptionsHeuristic(
   count = 3,
   ctx?: SuggestContext,
 ): { category: Category; options: SurvOption[] } {
-  const category = detectCategory(question);
+  const category = ctx?.categoryHint ?? detectCategory(question);
   const candidates: Candidate[] = [];
 
-  if (user.connectors.includes('yelp')) {
+  // Real geolocated places beat everything — timely and around the corner.
+  const places = ctx?.placesByCategory?.[category] ?? [];
+  for (const place of places.slice(0, 4)) {
+    const miles = Math.round(place.distanceKm * 0.621 * 10) / 10;
+    candidates.push({
+      label: place.name,
+      source: 'places',
+      why: `${miles} mi away${ctx?.city ? ` in ${ctx.city}` : ''}`,
+      score: 96 - place.distanceKm * 3,
+    });
+  }
+
+  // Connector mocks only stand in when no real places are available.
+  if (places.length === 0 && user.connectors.includes('yelp')) {
     for (const hit of YELP_MOCK[category] ?? []) {
       candidates.push({
         label: hit.name,
@@ -138,7 +160,7 @@ export function suggestOptionsHeuristic(
       });
     }
   }
-  if (user.connectors.includes('google_reviews')) {
+  if (places.length === 0 && user.connectors.includes('google_reviews')) {
     for (const hit of GOOGLE_REVIEWS_MOCK[category] ?? []) {
       candidates.push({
         label: hit.name,

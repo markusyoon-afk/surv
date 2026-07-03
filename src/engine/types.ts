@@ -59,7 +59,7 @@ export interface User {
   connectors: ConnectorId[];
 }
 
-export type OptionSource = 'user' | 'ai' | 'yelp' | 'google_reviews' | 'history' | 'nest';
+export type OptionSource = 'user' | 'ai' | 'yelp' | 'google_reviews' | 'history' | 'nest' | 'places';
 
 export interface SurvOption {
   id: string;

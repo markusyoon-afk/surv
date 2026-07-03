@@ -2,8 +2,9 @@
 // Run: npm test  (npx tsx src/engine/sage.test.ts)
 
 import assert from 'node:assert/strict';
-import { buildDrafts, timeContext } from './drafts';
+import { buildDrafts, categoryQuestion, timeContext } from './drafts';
 import { currentActivity, parseIcs, upcomingEvents } from './schedule';
+import { smartCheck, smartScore } from './smart';
 import { applyOutcome, formatRemaining, getPairTrust, tally, voterWeight, winningOption } from './sage';
 import { detectCategory, suggestOptionsHeuristic, topInfluencer } from './suggest';
 import { seedNests, seedUsers } from './seed';
@@ -250,6 +251,65 @@ test('upcoming calendar events become high-priority drafts', () => {
   assert.ok(eventDraft, 'calendar event should surface as a draft');
   assert.ok(eventDraft!.reason.includes('📅'));
   assert.equal(eventDraft!.category, 'Food'); // "Dinner" → Food
+});
+
+// ---- category-tap question generation ----
+
+test('tapping a category drafts a time-aware, geolocated question', () => {
+  const q = categoryQuestion('Food', [], new Date(2026, 6, 1, 12, 15), 'Evanston');
+  assert.ok(q.toLowerCase().includes('lunch'), `expected lunch question, got: ${q}`);
+  assert.ok(q.includes('Evanston'), 'city should localize the question');
+  const evening = categoryQuestion('Food', [], new Date(2026, 6, 1, 19, 0), null);
+  assert.ok(evening.toLowerCase().includes('dinner'));
+});
+
+test('your recurring question beats the template (learned habit)', () => {
+  const history = [
+    mkSurv('Who should I start at flex this week?', 1000, 'Sports'),
+    mkSurv('Who should I start at flex this week?', 2000, 'Sports'),
+  ];
+  const q = categoryQuestion('Sports', history, new Date(2026, 6, 1, 12, 0), null);
+  assert.equal(q, 'Who should I start at flex this week?');
+});
+
+// ---- geolocated suggestions ----
+
+test('real nearby places outrank mocks and carry distance', () => {
+  const ctx = {
+    users,
+    nests,
+    city: 'Evanston',
+    placesByCategory: {
+      Food: [
+        { name: 'Napolita Pizzeria', distanceKm: 0.4 },
+        { name: 'Ruby of Siam', distanceKm: 0.9 },
+        { name: 'Dengeos Skokie', distanceKm: 1.6 },
+      ],
+    },
+  };
+  const { options } = suggestOptionsHeuristic('Where should we eat dinner tonight?', me, 3, ctx);
+  assert.equal(options.length, 3);
+  assert.equal(options[0].label, 'Napolita Pizzeria');
+  assert.equal(options[0].source, 'places');
+  assert.ok(options[0].why?.includes('mi away') && options[0].why?.includes('Evanston'));
+  assert.ok(options.every((o) => o.source === 'places'), 'real places should displace mocks');
+});
+
+// ---- SMART framing ----
+
+test('smartCheck lights up for a well-formed decision', () => {
+  const options = [
+    { id: 'a', label: 'Napolita Pizzeria', source: 'places' as const },
+    { id: 'b', label: 'Cook at home', source: 'ai' as const },
+    { id: 'c', label: 'Ruby of Siam', source: 'places' as const },
+  ];
+  const check = smartCheck('Dinner tonight near Evanston — where should I go?', 'Food', options, 3600_000);
+  assert.equal(smartScore(check), 5, `expected full SMART, got ${JSON.stringify(check)}`);
+});
+
+test('smartCheck flags vague, timeless questions', () => {
+  const check = smartCheck('Thoughts on general stuff in the future sometime?', 'Food', [], 168 * 3600_000);
+  assert.ok(!check.M && !check.T, 'no options and no timeframe should fail M and T');
 });
 
 console.log(`\nSAGE engine: ${passed} tests passed`);

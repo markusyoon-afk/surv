@@ -11,8 +11,9 @@ import {
   View,
 } from 'react-native';
 import { DraftCards } from '../components/DraftCards';
-import type { SurvDraft } from '../engine/drafts';
-import { suggestOptions } from '../engine/suggest';
+import { categoryQuestion, type SurvDraft } from '../engine/drafts';
+import { SMART_LABELS, smartCheck } from '../engine/smart';
+import { suggestOptions, type SuggestContext } from '../engine/suggest';
 import { useSurv } from '../engine/store';
 import { CATEGORIES, type Category, type SurvOption } from '../engine/types';
 import { colors, radius } from '../theme';
@@ -38,7 +39,8 @@ export function NewSurv({
   initialDraft?: SurvDraft | null;
   onDraftConsumed?: () => void;
 }) {
-  const { me, users, nests, createSurv } = useSurv();
+  const { me, users, nests, survs, geo, nearbyPlaces, requestLocation, createSurv } = useSurv();
+  const [locating, setLocating] = useState(false);
   const [question, setQuestion] = useState('');
   const [category, setCategory] = useState<Category>('Living');
   const [options, setOptions] = useState<SurvOption[]>([]);
@@ -52,11 +54,18 @@ export function NewSurv({
     (n) => n.ownerId === me.id || n.members.some((m) => m.userId === me.id),
   );
 
-  const suggestFor = async (q: string) => {
+  const suggestCtx = (): SuggestContext => ({
+    users,
+    nests,
+    city: geo?.city,
+    placesByCategory: nearbyPlaces,
+  });
+
+  const suggestFor = async (q: string, lockCategory?: Category) => {
     setBusy(true);
     try {
-      const result = await suggestOptions(q, me, 3, { users, nests });
-      setCategory(result.category);
+      const result = await suggestOptions(q, me, 3, { ...suggestCtx(), categoryHint: lockCategory });
+      setCategory(lockCategory ?? result.category);
       setOptions((prev) => {
         const kept = prev.filter((o) => o.source === 'user');
         return [...kept, ...result.options].slice(0, 4);
@@ -67,6 +76,26 @@ export function NewSurv({
   };
 
   const suggest = () => suggestFor(question);
+
+  /** Tap a category with an empty question → SURV drafted from habits + schedule + location. */
+  const tapCategory = (c: Category) => {
+    setCategory(c);
+    if (question.trim() === '') {
+      const mySurvs = survs.filter((s) => s.askerId === me.id);
+      const q = categoryQuestion(c, mySurvs, new Date(), geo?.city);
+      setQuestion(q);
+      suggestFor(q, c);
+    }
+  };
+
+  const locate = async () => {
+    setLocating(true);
+    try {
+      await requestLocation();
+    } finally {
+      setLocating(false);
+    }
+  };
 
   /** One tap: prefill the routine decision and load its top-3 options. */
   const applyDraft = (draft: SurvDraft) => {
@@ -123,11 +152,32 @@ export function NewSurv({
         />
         <Text style={styles.counter}>{MAX_Q - question.length}</Text>
 
-        <Text style={styles.label}>Category</Text>
+        <View style={styles.rowBetween}>
+          <Text style={styles.label}>Category — tap one to auto-draft</Text>
+          <Pressable style={styles.geoChip} onPress={locate} disabled={locating}>
+            <Text style={styles.geoChipText}>
+              {locating ? '📍 Locating…' : geo ? `📍 ${geo.city ?? 'Located'}` : '📍 Use my location'}
+            </Text>
+          </Pressable>
+        </View>
         <View style={styles.chips}>
           {CATEGORIES.map((c) => (
-            <Chip key={c} label={c} on={category === c} onPress={() => setCategory(c)} />
+            <Chip key={c} label={c} on={category === c} onPress={() => tapCategory(c)} />
           ))}
+        </View>
+
+        <View style={styles.smartRow}>
+          {(() => {
+            const check = smartCheck(question, category, options, duration);
+            return SMART_LABELS.map(([key, label]) => (
+              <View key={key} style={[styles.smartChip, check[key] && styles.smartChipOn]}>
+                <Text style={[styles.smartChipText, check[key] && styles.smartChipTextOn]}>
+                  {key}
+                </Text>
+              </View>
+            ));
+          })()}
+          <Text style={styles.smartHint}>SMART decision check</Text>
         </View>
 
         <View style={styles.rowBetween}>
@@ -207,6 +257,7 @@ function sourceIcon(source: SurvOption['source']): string {
     case 'nest': return '🪺';
     case 'history': return '🕘';
     case 'ai': return '✨';
+    case 'places': return '📍';
     default: return '';
   }
 }
@@ -242,6 +293,21 @@ const styles = StyleSheet.create({
   chipText: { color: colors.inkSoft, fontSize: 12.5, fontWeight: '600' },
   chipTextOn: { color: colors.white },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
+  geoChip: { backgroundColor: colors.panelDeep, borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 5, marginTop: 10 },
+  geoChipText: { color: colors.owlDeep, fontWeight: '700', fontSize: 11.5 },
+  smartRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 },
+  smartChip: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.panelDeep,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  smartChipOn: { backgroundColor: colors.good },
+  smartChipText: { color: colors.inkFaint, fontWeight: '900', fontSize: 11 },
+  smartChipTextOn: { color: colors.white },
+  smartHint: { color: colors.inkFaint, fontSize: 11, marginLeft: 4 },
   suggestBtn: { backgroundColor: colors.owlDeep, borderRadius: radius.chip, paddingHorizontal: 12, paddingVertical: 6, marginTop: 10 },
   suggestText: { color: colors.white, fontWeight: '700', fontSize: 12.5 },
   option: {
