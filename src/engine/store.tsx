@@ -7,7 +7,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { fetchNearbyPlaces, GEO_CATEGORIES, getCurrentPosition, reverseCity, type NearbyPlace } from '../lib/geo';
 import { publishLive, subscribeLive } from '../lib/live';
 import { arenaResult } from './arena';
-import { adviseOption, advisorRationale, pickAdvisor } from './population';
+import { adviseOption, advisorRationale, avatarAt, pickAdvisor } from './population';
 import { applyArenaResult, applyOutcome, voterWeight } from './sage';
 import { parseIcs, type CalEvent } from './schedule';
 import { ME, seedNests, seedSurvs, seedUsers } from './seed';
@@ -88,6 +88,8 @@ interface SurvStore {
   sweepExpired: () => void;
   createNest: (name: string, emoji: string, memberIds: string[]) => void;
   addToNest: (nestId: string, userId: string, tier?: ClosenessTier) => void;
+  /** Recruit an AI Sage from the Forest into one of your Nests. */
+  addSageToNest: (sage: User, nestId: string) => void;
   cycleTier: (nestId: string, userId: string) => void;
   toggleConnector: (connector: User['connectors'][number]) => void;
   resetDemo: () => void;
@@ -149,17 +151,24 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
   stateRef.current = { users, nests, survs };
 
   /** One AI advisor engages a SURV: informed vote, often with a reasoned comment. */
-  const engageAdvisor = useCallback((survId: string): string | null => {
+  const engageAdvisor = useCallback((survId: string, preferId?: string): string | null => {
     const { users: u, nests: n, survs: s } = stateRef.current;
     const surv = s.find((x) => x.id === survId);
     const meUser = u.find((x) => x.id === ME);
     if (!surv || !meUser || surv.status !== 'live' || surv.expiresAt <= Date.now()) return null;
     const excludeIds = new Set(surv.votes.map((v) => v.userId));
-    const advisor = pickAdvisor(
-      surv.category,
-      excludeIds,
-      Date.now() + surv.id.length * 131 + surv.votes.length * 17,
-    );
+    let advisor: User | undefined;
+    if (preferId) {
+      advisor = u.find((x) => x.id === preferId);
+      if (!advisor && /^ai_\d+$/.test(preferId)) advisor = avatarAt(Number(preferId.slice(3)));
+    }
+    if (!advisor) {
+      advisor = pickAdvisor(
+        surv.category,
+        excludeIds,
+        Date.now() + surv.id.length * 131 + surv.votes.length * 17,
+      );
+    }
     if (excludeIds.has(advisor.id)) return null;
     const option = adviseOption(advisor, surv.options, Date.now() + surv.votes.length);
     const weight = voterWeight(advisor, meUser, surv.category, n);
@@ -316,8 +325,28 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         );
         for (const surv of mine) {
           const isForest = surv.audience.kind === 'public';
-          const cap = isForest ? 40 : 5;
+          const cap = isForest ? 40 : 8;
           if (surv.votes.length >= cap) continue;
+          // Recruited nest Sages vote on your Tree SURVs first — with full
+          // nest closeness behind their weight.
+          if (!isForest && surv.audience.kind === 'nests') {
+            const audienceNestIds = new Set(surv.audience.nestIds);
+            const memberIds = new Set(
+              nests
+                .filter((n) => audienceNestIds.has(n.id))
+                .flatMap((n) => [n.ownerId, ...n.members.map((m) => m.userId)]),
+            );
+            const nestSage = users.find(
+              (u) => u.isAI && memberIds.has(u.id) && !surv.votes.some((v) => v.userId === u.id),
+            );
+            if (nestSage) {
+              const name = engageAdvisor(surv.id, nestSage.id);
+              if (name) {
+                news.push(`${name} — your nest sage — voted on “${surv.question.slice(0, 36)}…” 🦉`);
+                continue;
+              }
+            }
+          }
           const rounds = isForest ? 1 + Math.floor(Math.random() * 3) : Math.random() < 0.5 ? 1 : 0;
           for (let k = 0; k < rounds; k++) {
             const name = engageAdvisor(surv.id);
@@ -527,6 +556,17 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       },
 
       sweepExpired: () => setSurvs((prev) => sweep(prev)),
+
+      addSageToNest: (sage, nestId) => {
+        setUsers((prev) => (prev.some((u) => u.id === sage.id) ? prev : [...prev, sage]));
+        setNests((prev) =>
+          prev.map((n) =>
+            n.id === nestId && !n.members.some((m) => m.userId === sage.id)
+              ? { ...n, members: [...n.members, { userId: sage.id, tier: 'regular' }] }
+              : n,
+          ),
+        );
+      },
 
       addToNest: (nestId, userId, tier = 'outer') => {
         setNests((prev) =>

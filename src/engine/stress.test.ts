@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { activeArenaSurvs, ARENA_BANK, arenaResult } from './arena';
 import { buildDrafts, categoryQuestion, eventDraftContent } from './drafts';
 import { avatarAt, makeAvatar, pickAdvisor, POPULATION_SIZE } from './population';
-import { applyArenaResult, applyOutcome, voterWeight } from './sage';
+import { applyArenaResult, applyOutcome, tally, voterWeight } from './sage';
 import { parseIcs } from './schedule';
 import { seedNests, seedUsers } from './seed';
 import { smartCheck } from './smart';
@@ -202,6 +202,55 @@ test('quality: arena bank has an optimized mix across all 10 categories', () => 
   }
   assert.ok((byCat.get('Food') ?? 0) >= (byCat.get('Tech') ?? 0), 'high-engagement categories weighted heavier');
   assert.equal(new Set(ARENA_BANK.map((b) => b.q)).size, ARENA_BANK.length, 'bank questions unique');
+});
+
+test('traffic: heavy account (400 SURVs, 300 users) computes a frame fast', () => {
+  const heavyUsers: User[] = Array.from({ length: 300 }, (_, i) => makeAvatar(i));
+  const heavySurvs: Surv[] = Array.from({ length: 400 }, (_, i) => ({
+    id: `hs_${i}`,
+    askerId: i % 5 === 0 ? me.id : heavyUsers[i % 300].id,
+    question: `Heavy question number ${i} — what should I do tonight?`,
+    category: CATEGORIES[i % 10],
+    options: [
+      { id: 'a', label: 'Option A', source: 'user' },
+      { id: 'b', label: 'Option B', source: 'user' },
+    ],
+    audience: i % 2 === 0 ? { kind: 'public' } : { kind: 'nests', nestIds: ['n_fam'] },
+    createdAt: i,
+    expiresAt: Date.now() + 3600_000,
+    status: 'live',
+    votes: Array.from({ length: 12 }, (_, v) => ({
+      userId: heavyUsers[(i + v) % 300].id,
+      optionId: v % 2 ? 'a' : 'b',
+      weight: 0.5,
+      votedAt: v,
+    })),
+  }));
+  const t0 = Date.now();
+  for (const s of heavySurvs) tally(s); // every card's bars
+  buildDrafts(heavySurvs.filter((s) => s.askerId === me.id), me, new Date(), 4, [], true);
+  const serialized = JSON.stringify({ users: heavyUsers, survs: heavySurvs });
+  const ms = Date.now() - t0;
+  assert.ok(ms < 1500, `heavy frame took ${ms}ms`);
+  assert.ok(serialized.length < 4_000_000, `state too large for localStorage: ${serialized.length}`);
+});
+
+test('traffic: 10,000 random population hits stay under a second', () => {
+  const t0 = Date.now();
+  for (let i = 0; i < 10_000; i++) avatarAt((i * 9973) % POPULATION_SIZE);
+  const ms = Date.now() - t0;
+  assert.ok(ms < 1000, `10k avatar lookups took ${ms}ms`);
+});
+
+test('liveness: Forest SURVs keep gathering votes as time passes', () => {
+  const now = 1_800_000_000_000;
+  const early = activeArenaSurvs(now)[0];
+  const laterList = activeArenaSurvs(now + 10 * 60_000);
+  const later = laterList.find((s) => s.id === early.id);
+  if (later) assert.ok(later.votes > early.votes, `votes should grow: ${early.votes} → ${later.votes}`);
+  // and new waves keep entering
+  const freshIds = new Set(laterList.map((s) => s.id));
+  assert.ok([...freshIds].some((id) => !activeArenaSurvs(now).some((s) => s.id === id)), 'new SURVs entered');
 });
 
 console.log(`\nStress/validation/quality: ${passed} tests passed`);
