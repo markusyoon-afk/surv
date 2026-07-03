@@ -7,7 +7,50 @@ import type { Category, Nest, OptionSource, SurvOption, User } from './types';
 export interface NearbyPlaceLike {
   name: string;
   distanceKm: number;
+  kind?: string;
+  cuisine?: string;
 }
+
+// ---- meal context: a coffee question must never suggest a dinner house ----
+
+export type MealContext = 'coffee' | 'breakfast' | 'lunch' | 'dinner' | 'any';
+
+export function detectMeal(question: string): MealContext {
+  const q = question.toLowerCase();
+  if (/\b(coffee|latte|espresso|brew|caffeine|cappuccino)\b/.test(q)) return 'coffee';
+  if (/\b(breakfast|brunch|bagel|pancake|morning bite)\b/.test(q)) return 'breakfast';
+  if (/\blunch\b/.test(q)) return 'lunch';
+  if (/\b(dinner|tonight|supper|date night)\b/.test(q)) return 'dinner';
+  return 'any';
+}
+
+/** Verified fit: venue type + cuisine must suit the meal being decided. */
+export function placeFitsMeal(place: NearbyPlaceLike, meal: MealContext): boolean {
+  const kind = place.kind ?? '';
+  const cuisine = (place.cuisine ?? '').toLowerCase();
+  const coffeeish = kind === 'cafe' || /coffee|donut|doughnut|bakery|tea|bubble_tea/.test(cuisine);
+  const breakfasty = coffeeish || /breakfast|bagel|pancake|diner|brunch/.test(cuisine) || kind === 'fast_food';
+  switch (meal) {
+    case 'coffee':
+      return coffeeish;
+    case 'breakfast':
+      return breakfasty;
+    case 'dinner':
+      return kind !== 'cafe' && !/coffee|donut|doughnut|bagel|breakfast|tea\b/.test(cuisine);
+    case 'lunch':
+    case 'any':
+    default:
+      return true;
+  }
+}
+
+/** Meal-appropriate fallbacks when no verified venue is nearby. */
+const MEAL_TEMPLATES: Record<Exclude<MealContext, 'any'>, string[]> = {
+  coffee: ['Brew at home', 'Coffee shop run', 'Skip it — tea today'],
+  breakfast: ['Eggs at home', 'Bagel + coffee to go', 'Full diner breakfast'],
+  lunch: ['Pack a lunch', 'Quick sandwich spot', 'Leftovers day'],
+  dinner: ['Cook what’s in the fridge', 'Order the usual', 'Try somewhere new'],
+};
 
 /** Optional social + geo context: real influencers in your Nests, real places near you. */
 export interface SuggestContext {
@@ -138,9 +181,12 @@ export function suggestOptionsHeuristic(
 ): { category: Category; options: SurvOption[] } {
   const category = ctx?.categoryHint ?? detectCategory(question);
   const candidates: Candidate[] = [];
+  const meal = category === 'Food' ? detectMeal(question) : 'any';
 
-  // Real geolocated places beat everything — timely and around the corner.
-  const places = ctx?.placesByCategory?.[category] ?? [];
+  // Real geolocated places beat everything — but only venues VERIFIED to fit
+  // the meal (no dinner houses for a coffee run).
+  const allPlaces = ctx?.placesByCategory?.[category] ?? [];
+  const places = category === 'Food' ? allPlaces.filter((p) => placeFitsMeal(p, meal)) : allPlaces;
   for (const place of places.slice(0, 4)) {
     const miles = Math.round(place.distanceKm * 0.621 * 10) / 10;
     candidates.push({
@@ -151,8 +197,10 @@ export function suggestOptionsHeuristic(
     });
   }
 
-  // Connector mocks only stand in when no real places are available.
-  if (places.length === 0 && user.connectors.includes('yelp')) {
+  // Connector mocks only stand in when no real places are available — and the
+  // dinner-style mocks never answer coffee/breakfast questions.
+  const mocksFit = meal === 'any' || meal === 'lunch' || meal === 'dinner';
+  if (places.length === 0 && mocksFit && user.connectors.includes('yelp')) {
     for (const hit of YELP_MOCK[category] ?? []) {
       candidates.push({
         label: hit.name,
@@ -162,7 +210,7 @@ export function suggestOptionsHeuristic(
       });
     }
   }
-  if (places.length === 0 && user.connectors.includes('google_reviews')) {
+  if (places.length === 0 && mocksFit && user.connectors.includes('google_reviews')) {
     for (const hit of GOOGLE_REVIEWS_MOCK[category] ?? []) {
       candidates.push({
         label: hit.name,
@@ -175,7 +223,9 @@ export function suggestOptionsHeuristic(
   for (const signal of NEST_SIGNAL_MOCK[category] ?? []) {
     candidates.push({ label: signal, source: 'nest', why: 'Trending in your Nests', score: 72 });
   }
-  GENERIC_TEMPLATES[category].forEach((template, i) => {
+  const generics =
+    category === 'Food' && meal !== 'any' ? MEAL_TEMPLATES[meal] : GENERIC_TEMPLATES[category];
+  generics.forEach((template, i) => {
     candidates.push({ label: template, source: 'ai', why: 'Based on your past SURVs', score: 44 - i * 6 });
   });
 

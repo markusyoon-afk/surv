@@ -11,7 +11,7 @@ import { buildDigest } from './digest';
 import { TRENDING_SURVS } from './trending';
 import { smartCheck, smartScore } from './smart';
 import { applyArenaResult, applyOutcome, formatRemaining, getPairTrust, tally, voterWeight, winningOption } from './sage';
-import { detectCategory, suggestOptionsHeuristic, topInfluencer } from './suggest';
+import { detectCategory, detectMeal, placeFitsMeal, suggestOptionsHeuristic, topInfluencer } from './suggest';
 import { seedNests, seedUsers } from './seed';
 import type { Surv, User } from './types';
 
@@ -487,6 +487,66 @@ test('health signals surface drafts only when connected', () => {
   const on = buildDrafts([], me, wedNoon, 6, [], true);
   assert.ok(!off.some((d) => d.reason.includes('health')), 'no health drafts while disconnected');
   assert.ok(on.some((d) => d.reason.includes('health')), 'health draft appears when connected');
+});
+
+// ---- meal-verified suggestions ----
+
+const MEAL_PLACES = [
+  { name: 'Inchin’s Bamboo Garden', distanceKm: 0.4, kind: 'restaurant', cuisine: 'chinese;indian' },
+  { name: 'The Human Bean', distanceKm: 0.9, kind: 'cafe', cuisine: 'coffee_shop' },
+  { name: 'Dunkin’', distanceKm: 1.1, kind: 'fast_food', cuisine: 'donut;coffee' },
+  { name: 'Prairie Moon', distanceKm: 0.6, kind: 'restaurant' },
+];
+
+test('meal context is detected from the question', () => {
+  assert.equal(detectMeal('Coffee run or brew at home?'), 'coffee');
+  assert.equal(detectMeal('What’s for breakfast?'), 'breakfast');
+  assert.equal(detectMeal('Lunch today — where should I eat?'), 'lunch');
+  assert.equal(detectMeal('Dinner tonight — where should I go?'), 'dinner');
+});
+
+test('a coffee question never suggests a dinner house', () => {
+  const { options } = suggestOptionsHeuristic('Coffee run or brew at home this morning?', me, 3, {
+    users,
+    nests,
+    categoryHint: 'Food',
+    placesByCategory: { Food: MEAL_PLACES },
+  });
+  const labels = options.map((o) => o.label);
+  assert.ok(!labels.some((l) => l.includes('Inchin')), `dinner house leaked into coffee: ${labels}`);
+  assert.ok(!labels.some((l) => l.includes('Prairie Moon')), `restaurant leaked into coffee: ${labels}`);
+  assert.ok(labels.includes('The Human Bean') && labels.includes('Dunkin’'), `coffee venues expected: ${labels}`);
+});
+
+test('dinner questions skip cafes and donut shops', () => {
+  const { options } = suggestOptionsHeuristic('Dinner tonight — where should I go?', me, 3, {
+    users,
+    nests,
+    categoryHint: 'Food',
+    placesByCategory: { Food: MEAL_PLACES },
+  });
+  const labels = options.map((o) => o.label);
+  assert.ok(labels.some((l) => l.includes('Inchin') || l.includes('Prairie Moon')), `restaurants expected: ${labels}`);
+  assert.ok(!labels.includes('The Human Bean') && !labels.includes('Dunkin’'), `cafe leaked into dinner: ${labels}`);
+});
+
+test('no verified venue → meal-appropriate fallbacks, not wrong restaurants', () => {
+  const { options } = suggestOptionsHeuristic('Coffee run or brew at home?', me, 3, {
+    users,
+    nests,
+    categoryHint: 'Food',
+    placesByCategory: { Food: [MEAL_PLACES[0]] }, // only the dinner house nearby
+  });
+  const labels = options.map((o) => o.label);
+  assert.ok(!labels.some((l) => l.includes('Inchin')), `dinner house leaked: ${labels}`);
+  assert.ok(labels.includes('Brew at home'), `expected brew-at-home fallback: ${labels}`);
+});
+
+test('placeFitsMeal handles untagged venues by type', () => {
+  assert.ok(!placeFitsMeal({ name: 'X', distanceKm: 1, kind: 'restaurant' }, 'coffee'));
+  assert.ok(placeFitsMeal({ name: 'X', distanceKm: 1, kind: 'cafe' }, 'breakfast'));
+  assert.ok(!placeFitsMeal({ name: 'X', distanceKm: 1, kind: 'cafe' }, 'dinner'));
+  assert.ok(placeFitsMeal({ name: 'X', distanceKm: 1, kind: 'restaurant' }, 'lunch'));
 });
 
 console.log(`\nSAGE engine: ${passed} tests passed`);

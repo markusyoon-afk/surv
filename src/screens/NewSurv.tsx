@@ -51,6 +51,8 @@ export function NewSurv({
   const [nestIds, setNestIds] = useState<string[]>([nests[0]?.id].filter(Boolean));
   const [busy, setBusy] = useState(false);
   const [rejected, setRejected] = useState<string[]>([]);
+  // Only lock the category into suggestions when the user actually chose it.
+  const [categoryPicked, setCategoryPicked] = useState(false);
 
   const myNests = nests.filter(
     (n) => n.ownerId === me.id || n.members.some((m) => m.userId === me.id),
@@ -81,7 +83,7 @@ export function NewSurv({
     }
   };
 
-  const suggest = () => suggestFor(question, category);
+  const suggest = () => suggestFor(question, categoryPicked ? category : undefined);
 
   /** X on a suggestion rejects it — and a fresh idea takes its place. */
   const rejectOption = async (opt: SurvOption) => {
@@ -126,6 +128,7 @@ export function NewSurv({
   /** Tap a category with an empty question → SURV drafted from habits + schedule + location. */
   const tapCategory = (c: Category) => {
     setCategory(c);
+    setCategoryPicked(true);
     if (question.trim() === '') {
       const mySurvs = survs.filter((s) => s.askerId === me.id);
       const q = categoryQuestion(c, mySurvs, new Date(), geo?.city);
@@ -192,6 +195,8 @@ export function NewSurv({
     });
     setQuestion('');
     setOptions([]);
+    setCategoryPicked(false);
+    setRejected([]);
     onPosted();
   };
 

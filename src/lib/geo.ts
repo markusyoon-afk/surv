@@ -13,7 +13,10 @@ export interface GeoPosition {
 export interface NearbyPlace {
   name: string;
   distanceKm: number;
+  /** OSM venue type: cafe, fast_food, restaurant, cinema, … */
   kind: string;
+  /** OSM cuisine tag when present: coffee_shop, chinese, burger, … */
+  cuisine?: string;
 }
 
 const onWeb = () => Platform.OS === 'web' && typeof window !== 'undefined';
@@ -99,6 +102,7 @@ export async function fetchNearbyPlaces(
         name,
         distanceKm: Math.round(haversineKm(pos, { lat: el.lat, lon: el.lon }) * 10) / 10,
         kind: el.tags?.amenity || el.tags?.leisure || el.tags?.shop || el.tags?.tourism || 'place',
+        cuisine: el.tags?.cuisine,
       });
     }
     return places.sort((a, b) => a.distanceKm - b.distanceKm).slice(0, 8);
