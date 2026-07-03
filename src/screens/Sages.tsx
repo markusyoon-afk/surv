@@ -2,7 +2,7 @@
 // ranked by decisions helped toward good outcomes, not vanity metrics.
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { OwlAvatar, stageForClout } from '../components/OwlAvatar';
 import { activeArenaSurvs, type ArenaSurv } from '../engine/arena';
@@ -30,10 +30,16 @@ function avatarInfluence(user: User): number {
   return base + ((n.length * 37 + user.name.length * 13) % 120);
 }
 
-export function Sages() {
+export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
   const { me, users, survs, arenaVotes, voteArena } = useSurv();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const now = Date.now();
+  // The board refreshes every minute: countdowns tick, closed SURVs drop out,
+  // and the ranking re-sorts so it's always the live top 10.
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const leaderboard = useMemo(() => {
     const pool = [
@@ -51,13 +57,14 @@ export function Sages() {
       .slice(0, 12);
   }, [users, survs]);
 
-  const topArena: ArenaSurv[] = useMemo(() => activeArenaSurvs(now, 5), [Math.floor(now / 30_000)]);
+  const topArena: ArenaSurv[] = useMemo(() => activeArenaSurvs(now, 10), [now]);
   const myBest = useMemo(
     () =>
       [...survs]
+        .filter((s) => s.status === 'live' && s.expiresAt > now)
         .sort((a, b) => b.votes.length - a.votes.length)
         .slice(0, 2),
-    [survs],
+    [survs, now],
   );
 
   const myRank = leaderboard.findIndex((r) => r.user.id === me.id);
@@ -65,8 +72,10 @@ export function Sages() {
   return (
     <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 100 }}>
       <View style={styles.card}>
-        <Text style={styles.title}>🏆 Top SURVs right now</Text>
-        <Text style={styles.sub}>All live — tap one to cast your vote before it closes.</Text>
+        <Text style={styles.title}>🏆 Top 10 SURVs — live right now</Text>
+        <Text style={styles.sub}>
+          Refreshes every minute. Tap any row to vote before it closes.
+        </Text>
         {topArena.map((s, i) => {
           const myVote = arenaVotes[s.id];
           const open = expandedId === s.id;
@@ -107,28 +116,26 @@ export function Sages() {
             </Pressable>
           );
         })}
-        {myBest.map((s, i) => {
-          const live = s.status === 'live' && s.expiresAt > now;
-          return (
-            <View key={s.id} style={styles.survRow}>
-              <Text style={styles.rank}>{topArena.length + i + 1}</Text>
+      </View>
+
+      {myBest.length > 0 && (
+        <View style={styles.card}>
+          <Text style={styles.title}>🌳 Live from your Tree</Text>
+          {myBest.map((s) => (
+            <Pressable key={s.id} style={styles.survRow} onPress={() => onOpen(s)}>
+              <Ionicons name="leaf" size={14} color={colors.owlDeep} style={{ marginTop: 3 }} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.survQ} numberOfLines={2}>{s.question}</Text>
                 <Text style={styles.survMeta}>
-                  Your network · {s.votes.length} votes ·{' '}
-                  {live ? (
-                    <Text style={styles.countdown}>⏳ {formatRemaining(s.expiresAt - now)} left</Text>
-                  ) : s.status === 'graded' && s.outcome === 'good' ? (
-                    '🧠 Wise Call'
-                  ) : (
-                    'closed'
-                  )}
+                  {s.votes.length} vote{s.votes.length === 1 ? '' : 's'} ·{' '}
+                  <Text style={styles.countdown}>⏳ {formatRemaining(s.expiresAt - now)} left</Text>
                 </Text>
               </View>
-            </View>
-          );
-        })}
-      </View>
+              <Ionicons name="chevron-forward" size={14} color={colors.inkFaint} />
+            </Pressable>
+          ))}
+        </View>
+      )}
 
       <View style={styles.card}>
         <Text style={styles.title}>🦉 The Sage leaderboard</Text>

@@ -171,7 +171,7 @@ function Shell() {
             />
           )}
           {tab === 'nests' && <Nests />}
-          {tab === 'sages' && <Sages />}
+          {tab === 'sages' && <Sages onOpen={setOpenSurv} />}
           {tab === 'profile' && <Profile />}
         </View>
 
