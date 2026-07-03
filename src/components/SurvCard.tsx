@@ -25,7 +25,7 @@ export function SageBar({ pct, label, mine, acted }: { pct: number; label: strin
 }
 
 export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) => void }) {
-  const { me, userById, castVote, actOn, grade, owlStyle } = useSurv();
+  const { me, userById, castVote, actOn, grade, owlStyle, addSuggestedOption } = useSurv();
   const [impact, setImpact] = React.useState<string | null>(null);
   const asker = userById(surv.askerId);
   const myVote = surv.votes.find((v) => v.userId === me.id);
@@ -97,6 +97,12 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
               {opt.why ? <Text style={styles.voteWhy}>{opt.why}</Text> : null}
             </Tap>
           ))}
+
+      {isMine && live && surv.options.length < 4 && (
+        <Tap style={styles.addOptBtn} onPress={() => addSuggestedOption(surv.id)}>
+          <Text style={styles.addOptText}>✨ Add an option</Text>
+        </Tap>
+      )}
 
       {needsAct && (
         <View style={styles.actRow}>
@@ -193,6 +199,16 @@ const styles = StyleSheet.create({
   },
   voteBtnText: { color: colors.ink, fontWeight: '700', fontSize: 14 },
   voteWhy: { color: colors.inkSoft, fontSize: 12, marginTop: 2 },
+  addOptBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.panelDeep,
+    borderRadius: radius.chip,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  addOptText: { color: colors.owlDeep, fontWeight: '700', fontSize: 12 },
   footer: { color: colors.inkFaint, fontSize: 12, marginTop: 4 },
   actRow: { marginTop: 4, marginBottom: 4 },
   actLabel: { color: colors.owlDeep, fontWeight: '800', fontSize: 12.5, marginBottom: 6 },

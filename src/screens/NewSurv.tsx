@@ -111,6 +111,22 @@ export function NewSurv({
     }
   };
 
+  // Zero-click options: the moment a typed question exists, options fill in on
+  // their own — ✨ Suggest is a refresh, never a required step.
+  const lastAutoQ = useRef('');
+  useEffect(() => {
+    const q = question.trim();
+    if (q.length < 8 || busy) return;
+    if (options.some((o) => o.source !== 'user')) return;
+    if (lastAutoQ.current === q) return;
+    const t = setTimeout(() => {
+      lastAutoQ.current = q;
+      suggestFor(q, categoryPicked ? category : undefined);
+    }, 700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [question, options, busy]);
+
   /** ✨ always delivers: no question yet → draft one for the category first. */
   const suggest = () => {
     let q = question;

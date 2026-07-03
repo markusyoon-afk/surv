@@ -97,6 +97,8 @@ interface SurvStore {
   }) => Surv;
   /** Zero-composer posting: a draft goes straight to your Tree, options auto-filled. */
   quickPostDraft: (draft: SurvDraft) => Surv;
+  /** Asker appends one fresh suggested option to their own live SURV (cap 4). */
+  addSuggestedOption: (survId: string) => void;
   actOn: (survId: string, optionId: string) => void;
   /** Grade a decision; returns an instant human-readable SAGE impact summary. */
   grade: (survId: string, outcome: Outcome) => string | null;
@@ -577,6 +579,31 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
           audience: myNestIds.length > 0 ? { kind: 'nests', nestIds: myNestIds } : { kind: 'public' },
           durationMs: Math.min(d.durationMs, 3 * 3600_000), // Tree-optimal flight
         });
+      },
+
+      addSuggestedOption: (survId) => {
+        const surv = survs.find((s) => s.id === survId);
+        // Adding to a live SURV is safe (no votes reference the new option);
+        // removing or editing after votes land never is.
+        if (!surv || surv.askerId !== ME || surv.status !== 'live' || surv.options.length >= 4) return;
+        const { options } = suggestOptionsHeuristic(surv.question, me, 1, {
+          users,
+          nests,
+          city: geo?.city,
+          placesByCategory: nearbyPlaces,
+          categoryHint: surv.category,
+          hotShows: hotMedia.shows,
+          hotMovies: hotMedia.movies,
+          excludeLabels: surv.options.map((o) => o.label),
+        });
+        if (options.length === 0) return;
+        setSurvs((prev) =>
+          prev.map((s) =>
+            s.id === survId && s.options.length < 4
+              ? { ...s, options: [...s.options, options[0]] }
+              : s,
+          ),
+        );
       },
 
       actOn: (survId, optionId) => {
