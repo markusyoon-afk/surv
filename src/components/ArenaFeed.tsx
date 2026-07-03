@@ -21,7 +21,7 @@ export function ArenaFeed() {
       <View style={styles.ticker}>
         <Ionicons name="pulse" size={14} color={colors.sage} />
         <Text style={styles.tickerText}>
-          {stats.liveNow.toLocaleString()} SURVs live now · {stats.votesLastHour.toLocaleString()} votes this hour
+          {stats.newThisHour.toLocaleString()} new SURVs this hour · {stats.liveNow.toLocaleString()} live in the Forest
         </Text>
         <Pressable onPress={() => setRefreshKey((k) => k + 1)} hitSlop={8}>
           <Ionicons name="refresh" size={14} color={colors.star} />
@@ -31,8 +31,8 @@ export function ArenaFeed() {
         <ArenaCard key={s.id} surv={s} myVote={arenaVotes[s.id]} onVote={voteArena} />
       ))}
       <Text style={styles.hint}>
-        Every vote here is advice to a real decision-maker. When they act and it goes
-        well, your SAGE grows — this is the road to Super Sage.
+        The Forest is every tree but yours — perch on a branch, lend your wisdom.
+        When your call lands well, your SAGE grows. That’s the road to Super Sage.
       </Text>
     </ScrollView>
   );

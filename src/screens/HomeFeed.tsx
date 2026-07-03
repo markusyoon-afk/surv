@@ -1,5 +1,7 @@
-// The Nest — home feed. Original beta filters: All/Public/Private + Responded/Not.
+// The Tree — your sphere's decisions, one clean scroll. Flip to the Forest for
+// every other tree out there. Filters are compact tap-to-cycle chips.
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ArenaFeed } from '../components/ArenaFeed';
@@ -12,8 +14,13 @@ import { useSurv } from '../engine/store';
 import type { Surv } from '../engine/types';
 import { colors, radius } from '../theme';
 
-type Visibility = 'all' | 'public' | 'private';
-type Responded = 'all' | 'responded' | 'not';
+const VISIBILITY = ['all', 'public', 'private'] as const;
+const RESPONDED = ['all', 'responded', 'not'] as const;
+type Visibility = (typeof VISIBILITY)[number];
+type Responded = (typeof RESPONDED)[number];
+
+const VISIBILITY_LABEL: Record<Visibility, string> = { all: 'All', public: 'Public', private: 'Private' };
+const RESPONDED_LABEL: Record<Responded, string> = { all: 'Any status', responded: 'Responded', not: 'Not yet' };
 
 export function HomeFeed({
   onOpen,
@@ -46,6 +53,9 @@ export function HomeFeed({
       });
   }, [survs, visibility, responded, me.id]);
 
+  const cycle = <T extends string>(values: readonly T[], current: T): T =>
+    values[(values.indexOf(current) + 1) % values.length];
+
   return (
     <View style={{ flex: 1 }}>
       <View style={styles.scopeRow}>
@@ -53,76 +63,50 @@ export function HomeFeed({
           style={[styles.scopeBtn, scope === 'network' && styles.scopeBtnOn]}
           onPress={() => setScope('network')}
         >
-          <Text style={[styles.scopeText, scope === 'network' && styles.scopeTextOn]}>My Network</Text>
+          <Text style={[styles.scopeText, scope === 'network' && styles.scopeTextOn]}>🌳 My Tree</Text>
         </Pressable>
         <Pressable
           style={[styles.scopeBtn, scope === 'arena' && styles.scopeBtnOn]}
           onPress={() => setScope('arena')}
         >
-          <Text style={[styles.scopeText, scope === 'arena' && styles.scopeTextOn]}>🌍 Public arena</Text>
+          <Text style={[styles.scopeText, scope === 'arena' && styles.scopeTextOn]}>🌲 The Forest</Text>
         </Pressable>
       </View>
 
       {scope === 'arena' ? (
         <ArenaFeed />
       ) : (
-        <>
+        <ScrollView contentContainerStyle={{ paddingBottom: 90 }}>
           <DraftCards horizontal onSelect={onDraft} />
           <DigestCard onGoToProfile={onGoToProfile} />
-          <View style={styles.filters}>
-        <FilterGroup
-          value={visibility}
-          onChange={setVisibility}
-          options={[
-            ['all', 'All'],
-            ['public', 'Public'],
-            ['private', 'Private'],
-          ]}
-        />
-        <FilterGroup
-          value={responded}
-          onChange={setResponded}
-          options={[
-            ['all', 'All'],
-            ['responded', 'Responded'],
-            ['not', 'Not yet'],
-          ]}
-        />
-      </View>
-          <ScrollView contentContainerStyle={{ paddingBottom: 90 }}>
-            {feed.map((surv) => (
-              <SurvCard key={surv.id} surv={surv} onOpen={onOpen} />
-            ))}
-            {feed.length === 0 && (
-              <Text style={styles.empty}>Nothing here — post a SURV and let your Nest decide.</Text>
-            )}
-          </ScrollView>
-        </>
-      )}
-    </View>
-  );
-}
 
-function FilterGroup<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (v: T) => void;
-  options: Array<[T, string]>;
-}) {
-  return (
-    <View style={styles.group}>
-      {options.map(([key, label]) => (
-        <Pressable
-          key={key}
-          style={[styles.chip, value === key && styles.chipOn]}
-          onPress={() => onChange(key)}
-        >
-          <Text style={[styles.chipText, value === key && styles.chipTextOn]}>{label}</Text>
-        </Pressable>
-      ))}
+          <View style={styles.filterRow}>
+            <Ionicons name="funnel-outline" size={12} color={colors.star} />
+            <Pressable
+              style={styles.filterChip}
+              onPress={() => setVisibility(cycle(VISIBILITY, visibility))}
+            >
+              <Text style={styles.filterText}>{VISIBILITY_LABEL[visibility]}</Text>
+              <Ionicons name="chevron-down" size={11} color={colors.star} />
+            </Pressable>
+            <Pressable
+              style={styles.filterChip}
+              onPress={() => setResponded(cycle(RESPONDED, responded))}
+            >
+              <Text style={styles.filterText}>{RESPONDED_LABEL[responded]}</Text>
+              <Ionicons name="chevron-down" size={11} color={colors.star} />
+            </Pressable>
+            <Text style={styles.count}>{feed.length} SURV{feed.length === 1 ? '' : 's'}</Text>
+          </View>
+
+          {feed.map((surv) => (
+            <SurvCard key={surv.id} surv={surv} onOpen={onOpen} />
+          ))}
+          {feed.length === 0 && (
+            <Text style={styles.empty}>Nothing on this branch — post a SURV and let your Nest decide.</Text>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -141,16 +125,23 @@ const styles = StyleSheet.create({
   scopeBtnOn: { backgroundColor: colors.sage },
   scopeText: { color: colors.star, fontWeight: '600', fontSize: 12.5 },
   scopeTextOn: { color: colors.navy, fontWeight: '700' },
-  filters: { paddingHorizontal: 14, paddingBottom: 10, gap: 6 },
-  group: { flexDirection: 'row', gap: 6 },
-  chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: radius.chip,
-    backgroundColor: colors.nightCard,
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingHorizontal: 16,
+    marginBottom: 10,
   },
-  chipOn: { backgroundColor: colors.sage },
-  chipText: { color: colors.star, fontSize: 12.5, fontWeight: '600' },
-  chipTextOn: { color: colors.navy },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.nightCard,
+    borderRadius: radius.chip,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  filterText: { color: colors.star, fontSize: 11.5, fontWeight: '600' },
+  count: { color: colors.inkFaint, fontSize: 11, marginLeft: 'auto' },
   empty: { color: colors.star, textAlign: 'center', marginTop: 40, paddingHorizontal: 30 },
 });

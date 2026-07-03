@@ -23,6 +23,10 @@ export function Onboarding({
       <View style={styles.card}>
         <Text style={styles.logo}>🦉 SURV</Text>
         <Text style={styles.tagline}>Live it! SURV it!</Text>
+        <Text style={styles.brand}>
+          A SURV is a survey that serves — you lend your wisdom, others lend theirs.
+          The owl is the sage in you; your Tree holds your Nests, and the Forest holds everyone’s.
+        </Text>
         {BEATS.map(([emoji, title, body]) => (
           <View key={title} style={styles.beat}>
             <Text style={styles.beatEmoji}>{emoji}</Text>
@@ -71,7 +75,8 @@ const styles = StyleSheet.create({
     maxWidth: 420,
   },
   logo: { color: colors.owlDeep, fontSize: 28, fontWeight: '900', textAlign: 'center', letterSpacing: 2 },
-  tagline: { color: colors.inkSoft, fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 18 },
+  tagline: { color: colors.inkSoft, fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
+  brand: { color: colors.inkSoft, fontSize: 12, textAlign: 'center', lineHeight: 17, marginBottom: 14, fontStyle: 'italic' },
   beat: { flexDirection: 'row', gap: 12, marginBottom: 16, alignItems: 'flex-start' },
   beatEmoji: { fontSize: 28 },
   beatTitle: { color: colors.ink, fontWeight: '800', fontSize: 15.5 },

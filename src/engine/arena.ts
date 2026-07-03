@@ -33,8 +33,12 @@ export interface ArenaSurv {
 const MIN = 60_000;
 const HOUR = 3600_000;
 const BUCKET = 10 * MIN; // a new wave of SURVs every 10 minutes
-const PER_BUCKET = 3;
+/** 167 per 10-minute wave ≈ 1,002 brand-new SURVs entering the Forest every hour. */
+export const PER_BUCKET = 167;
+export const NEW_PER_HOUR = PER_BUCKET * 6;
 const LOOKBACK_BUCKETS = 36; // 6 hours of waves
+/** Deterministic sample of each wave rendered in the feed (the rest live in the stats). */
+const DISPLAY_SLOTS = [0, 41, 83, 125];
 
 function mulberry32(seed: number) {
   return () => {
@@ -94,7 +98,7 @@ export function activeArenaSurvs(now = Date.now(), limit = 20): ArenaSurv[] {
   const currentBucket = Math.floor(now / BUCKET);
   const live: ArenaSurv[] = [];
   for (let b = currentBucket - LOOKBACK_BUCKETS; b <= currentBucket; b++) {
-    for (let s = 0; s < PER_BUCKET; s++) {
+    for (const s of DISPLAY_SLOTS) {
       const surv = makeArenaSurv(b, s);
       if (!surv || surv.createdAt > now || surv.expiresAt < now) continue;
       const elapsedMin = (now - surv.createdAt) / MIN;
@@ -130,12 +134,18 @@ export function arenaResult(
   return { actedIndex, outcome, category: surv.category, question: surv.question, options: surv.options };
 }
 
-/** Headline stats for the ticker — the scale of decisions moving through SURV. */
-export function arenaStats(now = Date.now()): { liveNow: number; votesLastHour: number } {
+/** Headline stats for the ticker — the scale of decisions moving through the Forest. */
+export function arenaStats(now = Date.now()): {
+  newThisHour: number;
+  liveNow: number;
+  votesLastHour: number;
+} {
   const bucket = Math.floor(now / BUCKET);
   const rand = mulberry32(bucket);
+  // ~1,002/hr entering × ~4h average lifetime ≈ ~4,000 live at any moment.
   return {
-    liveNow: 2100 + Math.floor(rand() * 900),
-    votesLastHour: 9500 + Math.floor(rand() * 4500),
+    newThisHour: NEW_PER_HOUR,
+    liveNow: 3800 + Math.floor(rand() * 500),
+    votesLastHour: 21_000 + Math.floor(rand() * 6000),
   };
 }

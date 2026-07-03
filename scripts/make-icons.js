@@ -212,18 +212,33 @@ function drawAvatar(stage) {
     fillTriangle(buf, S, [38, 56], [90, 56], [64, 122], CAPE);
   }
 
-  const body = stage === 1 ? '#7cccae' : OWL;
-  const bodyR = stage === 1 ? 30 : 38;
-  const bodyY = stage === 1 ? 82 : 78;
-
-  // ear tufts from stage 2 up
-  if (stage >= 2) {
-    fillTriangle(buf, S, [34, 56], [46, 40], [52, 60], body);
-    fillTriangle(buf, S, [94, 56], [82, 40], [76, 60], body);
+  if (stage === 1) {
+    // The beginning: an owl egg, baby owl just hatching out.
+    fillCircle(buf, S, 64, 46, 21, '#7cccae'); // baby head peeking
+    fillCircle(buf, S, 55, 44, 9, CREAM);
+    fillCircle(buf, S, 73, 44, 9, CREAM);
+    fillCircle(buf, S, 55, 44, 4, INK);
+    fillCircle(buf, S, 73, 44, 4, INK);
+    fillTriangle(buf, S, [64, 52], [59, 60], [69, 60], BEAK);
+    // egg shell holds the body; jagged crack rim across the middle
+    fillCircle(buf, S, 64, 94, 30, CREAM);
+    fillCircle(buf, S, 64, 82, 25, CREAM);
+    for (const x of [42, 55, 68, 81]) {
+      fillTriangle(buf, S, [x, 76], [x + 12, 76], [x + 6, 62], CREAM);
+    }
+    return encodePng(S, S, buf);
   }
 
+  const body = OWL;
+  const bodyR = 38;
+  const bodyY = 78;
+
+  // ear tufts
+  fillTriangle(buf, S, [34, 56], [46, 40], [52, 60], body);
+  fillTriangle(buf, S, [94, 56], [82, 40], [76, 60], body);
+
   fillCircle(buf, S, 64, bodyY, bodyR, body);
-  if (stage >= 2) fillCircle(buf, S, 64, bodyY + 22, bodyR * 0.55, OWL_DEEP);
+  fillCircle(buf, S, 64, bodyY + 22, bodyR * 0.55, OWL_DEEP);
 
   // eyes (drawn over mask when masked)
   if (stage >= 4) {
@@ -235,9 +250,8 @@ function drawAvatar(stage) {
     fillCircle(buf, S, 48, 67, 5, INK);
     fillCircle(buf, S, 80, 67, 5, INK);
   } else {
-    const eyeR = stage === 1 ? 15 : 14;
-    fillCircle(buf, S, 48, 68, eyeR, CREAM);
-    fillCircle(buf, S, 80, 68, eyeR, CREAM);
+    fillCircle(buf, S, 48, 68, 14, CREAM);
+    fillCircle(buf, S, 80, 68, 14, CREAM);
     fillCircle(buf, S, 48, 68, 6, INK);
     fillCircle(buf, S, 80, 68, 6, INK);
   }
@@ -245,23 +259,21 @@ function drawAvatar(stage) {
   // beak
   fillTriangle(buf, S, [64, 82], [56, 94], [72, 94], BEAK);
 
-  // graduation cap for the Sage
+  // graduation cap + scroll for the Sage
   if (stage === 3) {
     fillTriangle(buf, S, [64, 24], [98, 40], [64, 54], INK);
     fillTriangle(buf, S, [64, 24], [30, 40], [64, 54], INK);
     fillRect(buf, S, 90, 40, 3, 16, GOLD);
     fillCircle(buf, S, 92, 58, 4, GOLD);
+    // the scroll of wisdom, tucked under a wing
+    fillCircle(buf, S, 96, 88, 6, '#d8c294');
+    fillCircle(buf, S, 96, 106, 6, '#d8c294');
+    fillRect(buf, S, 90, 88, 12, 18, '#e8d9b0');
+    fillRect(buf, S, 90, 95, 12, 4, GOLD);
   }
 
   // super emblem
   if (stage >= 5) fillCircle(buf, S, 64, 96, 8, GOLD);
-
-  // hatchling egg cup
-  if (stage === 1) {
-    fillCircle(buf, S, 64, 122, 34, CREAM);
-    fillTriangle(buf, S, [40, 104], [52, 104], [46, 92], CREAM);
-    fillTriangle(buf, S, [76, 104], [88, 104], [82, 92], CREAM);
-  }
 
   return encodePng(S, S, buf);
 }

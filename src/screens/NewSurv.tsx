@@ -12,8 +12,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { DraftCards } from '../components/DraftCards';
-import { categoryQuestion, type SurvDraft } from '../engine/drafts';
+import { buildDrafts, categoryQuestion, type SurvDraft } from '../engine/drafts';
 import { suggestOptions, type SuggestContext } from '../engine/suggest';
 import { useSurv } from '../engine/store';
 import { TRENDING_SURVS, type TrendingSurv } from '../engine/trending';
@@ -41,7 +40,7 @@ export function NewSurv({
   initialDraft?: SurvDraft | null;
   onDraftConsumed?: () => void;
 }) {
-  const { me, users, nests, survs, geo, nearbyPlaces, requestLocation, createSurv } = useSurv();
+  const { me, users, nests, survs, geo, nearbyPlaces, requestLocation, createSurv, calendarEvents, healthConnected } = useSurv();
   const [locating, setLocating] = useState(false);
   const [question, setQuestion] = useState('');
   const [category, setCategory] = useState<Category>('Living');
@@ -199,28 +198,23 @@ export function NewSurv({
   return (
     <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
       {question.trim() === '' && options.length === 0 && (
-        <>
-          <DraftCards onSelect={applyDraft} />
-          <View style={styles.trendingWrap}>
-            <Text style={styles.trendingTitle}>TOP SURVS OUT THERE — TAP TO REUSE</Text>
-            {TRENDING_SURVS.map((t) => (
-              <Pressable key={t.id} style={styles.trendingCard} onPress={() => applyTrending(t)}>
-                <Ionicons
-                  name={CATEGORY_ICONS[t.category] as keyof typeof Ionicons.glyphMap}
-                  size={15}
-                  color={colors.sage}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.trendingQ}>{t.question}</Text>
-                  <Text style={styles.trendingMeta}>
-                    {t.category} · reused {t.reuses}× · options included
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={15} color={colors.star} />
+        <View style={styles.ideasWrap}>
+          <Text style={styles.ideasTitle}>IDEAS — ONE TAP AND IT’S DRAFTED</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.ideasStrip}>
+            {buildDrafts(survs.filter((s) => s.askerId === me.id), me, new Date(), 4, calendarEvents, healthConnected).map((d) => (
+              <Pressable key={d.id} style={styles.ideaCard} onPress={() => applyDraft(d)}>
+                <Text style={styles.ideaReason}>⚡ {d.reason}</Text>
+                <Text style={styles.ideaQ} numberOfLines={3}>{d.question}</Text>
               </Pressable>
             ))}
-          </View>
-        </>
+            {TRENDING_SURVS.map((t) => (
+              <Pressable key={t.id} style={styles.ideaCard} onPress={() => applyTrending(t)}>
+                <Text style={styles.ideaReason}>🔥 Trending · {t.reuses}×</Text>
+                <Text style={styles.ideaQ} numberOfLines={3}>{t.question}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
       )}
       <View style={styles.card}>
         <TextInput
@@ -234,7 +228,7 @@ export function NewSurv({
         <Text style={styles.counter}>{MAX_Q - question.length}</Text>
 
         <View style={styles.rowBetween}>
-          <Text style={styles.label}>Category — tap one to auto-draft</Text>
+          <Text style={styles.label}>Pick a category</Text>
           <Pressable style={styles.geoChip} onPress={locate} disabled={locating}>
             <Text style={styles.geoChipText}>
               {locating ? '📍 Locating…' : geo ? `📍 ${geo.city ?? 'Located'}` : '📍 Use my location'}
@@ -248,10 +242,10 @@ export function NewSurv({
               <Pressable key={c} style={[styles.catChip, on && styles.catChipOn]} onPress={() => tapCategory(c)}>
                 <Ionicons
                   name={CATEGORY_ICONS[c] as keyof typeof Ionicons.glyphMap}
-                  size={14}
-                  color={on ? colors.white : colors.inkSoft}
+                  size={17}
+                  color={on ? colors.white : colors.owlDeep}
                 />
-                <Text style={[styles.chipText, on && styles.chipTextOn]}>{c}</Text>
+                <Text style={[styles.catChipText, on && styles.catChipTextOn]}>{c}</Text>
               </Pressable>
             );
           })}
@@ -431,35 +425,35 @@ const styles = StyleSheet.create({
   catChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 11,
-    paddingVertical: 7,
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: radius.chip,
     backgroundColor: colors.panelDeep,
     borderWidth: 1,
     borderColor: colors.hairline,
   },
   catChipOn: { backgroundColor: colors.owl, borderColor: colors.owl },
+  catChipText: { color: colors.ink, fontSize: 14.5, fontWeight: '700' },
+  catChipTextOn: { color: colors.white },
   chipText: { color: colors.inkSoft, fontSize: 12.5, fontWeight: '600' },
   chipTextOn: { color: colors.white },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   geoChip: { backgroundColor: colors.panelDeep, borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 5, marginTop: 10 },
   geoChipText: { color: colors.owlDeep, fontWeight: '700', fontSize: 11.5 },
-  trendingWrap: { marginBottom: 12 },
-  trendingTitle: { color: colors.sage, fontWeight: '700', fontSize: 10.5, letterSpacing: 1, marginBottom: 7, paddingHorizontal: 2 },
-  trendingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+  ideasWrap: { marginBottom: 12 },
+  ideasTitle: { color: colors.sage, fontWeight: '700', fontSize: 10.5, letterSpacing: 1, marginBottom: 7, paddingHorizontal: 2 },
+  ideasStrip: { gap: 8, paddingRight: 8 },
+  ideaCard: {
+    width: 180,
     backgroundColor: colors.nightCard,
     borderRadius: radius.card,
     borderWidth: 1,
     borderColor: 'rgba(78,201,180,0.22)',
     padding: 11,
-    marginBottom: 7,
   },
-  trendingQ: { color: colors.white, fontWeight: '600', fontSize: 13.5 },
-  trendingMeta: { color: colors.star, fontSize: 11, marginTop: 2 },
+  ideaReason: { color: colors.sage, fontWeight: '700', fontSize: 11 },
+  ideaQ: { color: colors.white, fontWeight: '600', fontSize: 13, marginTop: 4, lineHeight: 17 },
   sliderTrackWrap: { paddingVertical: 10, marginBottom: 6, justifyContent: 'center' },
   sliderTrack: { height: 6, borderRadius: 3, backgroundColor: colors.panelDeep, overflow: 'hidden' },
   sliderFill: { height: '100%', backgroundColor: colors.sage, borderRadius: 3 },

@@ -432,7 +432,8 @@ test('arena: live SURVs stream deterministically with badges and stats', () => {
   assert.ok(a[0].badges.includes('🏆 Top SURV'));
   assert.ok(a.every((s) => s.expiresAt > now && s.createdAt <= now));
   const stats = arenaStats(now);
-  assert.ok(stats.liveNow > 2000 && stats.votesLastHour > 9000, 'thousands of SURVs an hour');
+  assert.ok(stats.newThisHour >= 1000, `1000+ new SURVs per hour, got ${stats.newThisHour}`);
+  assert.ok(stats.liveNow > 3000 && stats.votesLastHour > 15000, 'a busy Forest');
 });
 
 test('arena outcomes settle deterministically after expiry', () => {
