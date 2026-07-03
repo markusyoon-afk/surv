@@ -156,11 +156,11 @@ export function CalendarBoard({ onDraft }: { onDraft: (draft: SurvDraft) => void
                   </Text>
                 )}
                 {posted ? (
-                  <Text style={styles.postedNote}>🕊️ Launched to your Tree — advisors incoming</Text>
+                  <Text style={styles.postedNote}>Posted to your Tree — advisors incoming</Text>
                 ) : (
                   <View style={styles.btnRow}>
                     <Tap style={styles.postBtn} onPress={() => post(row)} hitSlop={6}>
-                      <Text style={styles.postBtnText}>🕊️ Post SURV now</Text>
+                      <Text style={styles.postBtnText}>Post SURV now</Text>
                     </Tap>
                     <Tap onPress={() => onDraft(row.draft)} hitSlop={8}>
                       <Text style={styles.editLink}>edit in composer →</Text>

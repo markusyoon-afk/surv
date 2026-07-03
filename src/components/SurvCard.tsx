@@ -69,7 +69,7 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
         </View>
         <View style={[styles.scopePill, surv.audience.kind === 'public' ? styles.scopeForest : styles.scopeTree]}>
           <Text style={styles.scopePillText}>
-            {surv.audience.kind === 'public' ? '🌲 Forest' : '🌳 Tree'}
+            {surv.audience.kind === 'public' ? 'Forest' : 'Tree'}
           </Text>
         </View>
         {live && <View style={styles.liveDot} />}
@@ -100,13 +100,13 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
 
       {isMine && live && surv.options.length < 4 && (
         <Tap style={styles.addOptBtn} onPress={() => addSuggestedOption(surv.id)}>
-          <Text style={styles.addOptText}>✨ Add an option</Text>
+          <Text style={styles.addOptText}>+ Add an option</Text>
         </Tap>
       )}
 
       {needsAct && (
         <View style={styles.actRow}>
-          <Text style={styles.actLabel}>⏳ Flight’s over — what did you do?</Text>
+          <Text style={styles.actLabel}>Time’s up — what did you do?</Text>
           <View style={styles.actBtns}>
             {surv.options.map((opt) => (
               <Tap key={opt.id} style={styles.actBtn} onPress={() => actOn(surv.id, opt.id)}>

@@ -424,8 +424,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             if (nestSage) {
               const name = engageAdvisor(surv.id, nestSage.id);
               if (name) {
-                const role = perched.includes(nestSage.id) && !memberIds.has(nestSage.id) ? 'perched on your Tree' : 'your nest sage';
-                news.push(`🪶 ${name} — ${role} — voted on “${surv.question.slice(0, 36)}…”`);
+                const role = perched.includes(nestSage.id) && !memberIds.has(nestSage.id) ? 'following your Tree' : 'your Nest sage';
+                news.push(`${name} — ${role} — voted on “${surv.question.slice(0, 36)}…”`);
                 continue;
               }
             }
@@ -642,8 +642,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
               ? 'the crowd leaned the other way — your call stands · '
               : '';
         return outcome === 'good'
-          ? `👍 Good call locked in — ${topLine}your Clout +1`
-          : `👎 Owned it — ${topLine}your Clout −1, wisdom +1`;
+          ? `👍 Good call locked in — ${topLine}your SAGEmeter +1`
+          : `👎 Owned it — ${topLine}your SAGEmeter −1, wisdom +1`;
       },
 
       addComment: (survId, text) => {

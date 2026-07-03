@@ -60,13 +60,13 @@ export function HomeFeed({
           style={[styles.scopeBtn, scope === 'network' && styles.scopeBtnOn]}
           onPress={() => setScope('network')}
         >
-          <Text style={[styles.scopeText, scope === 'network' && styles.scopeTextOn]}>🌳 My Tree</Text>
+          <Text style={[styles.scopeText, scope === 'network' && styles.scopeTextOn]}>My Tree</Text>
         </Tap>
         <Tap
           style={[styles.scopeBtn, scope === 'arena' && styles.scopeBtnOn]}
           onPress={() => setScope('arena')}
         >
-          <Text style={[styles.scopeText, scope === 'arena' && styles.scopeTextOn]}>🌲 The Forest</Text>
+          <Text style={[styles.scopeText, scope === 'arena' && styles.scopeTextOn]}>The Forest</Text>
         </Tap>
       </View>
 

@@ -45,7 +45,7 @@ export function ArenaFeed() {
         </Tap>
       </View>
       <View style={styles.sortRow}>
-        {([['hot', '🔥 Hottest'], ['ending', '⏳ Ending soon'], ['foryou', '🎯 For you']] as Array<[SortMode, string]>).map(
+        {([['hot', 'Hottest'], ['ending', 'Ending soon'], ['foryou', 'For you']] as Array<[SortMode, string]>).map(
           ([mode, label]) => (
             <Tap
               key={mode}

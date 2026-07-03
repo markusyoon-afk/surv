@@ -93,7 +93,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
                 <Text style={styles.survQ} numberOfLines={2}>{s.question}</Text>
                 <Text style={styles.survMeta}>
                   {s.askerName} · {(s.votes + (myVote ? 1 : 0)).toLocaleString()} votes ·{' '}
-                  <Text style={styles.countdown}>⏳ {formatRemaining(s.expiresAt - now)} left</Text>
+                  <Text style={styles.countdown}>{formatRemaining(s.expiresAt - now)} left</Text>
                   {s.badges.length > 0 ? `  ${s.badges.join(' ')}` : ''}
                 </Text>
                 {open && !myVote && (
@@ -123,7 +123,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
 
       {myBest.length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.title}>🌳 Live from your Tree</Text>
+          <Text style={styles.title}>Live from your Tree</Text>
           {myBest.map((s) => (
             <Tap key={s.id} style={styles.survRow} onPress={() => onOpen(s)}>
               <Ionicons name="leaf" size={14} color={colors.owlDeep} style={{ marginTop: 3 }} />
@@ -131,7 +131,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
                 <Text style={styles.survQ} numberOfLines={2}>{s.question}</Text>
                 <Text style={styles.survMeta}>
                   {s.votes.length} vote{s.votes.length === 1 ? '' : 's'} ·{' '}
-                  <Text style={styles.countdown}>⏳ {formatRemaining(s.expiresAt - now)} left</Text>
+                  <Text style={styles.countdown}>{formatRemaining(s.expiresAt - now)} left</Text>
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={14} color={colors.inkFaint} />
@@ -141,7 +141,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
       )}
 
       <View style={styles.card}>
-        <Text style={styles.title}>🦉 The Sage leaderboard</Text>
+        <Text style={styles.title}>The Sage leaderboard</Text>
         <Text style={styles.sub}>
           Ranked by decisions helped toward good outcomes — influence you earn, not buy.
         </Text>
@@ -167,16 +167,16 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
               <Text style={styles.clout}>{Math.round(row.user.clout)}%</Text>
               {row.user.isAI &&
                 (perched.includes(row.user.id) ? (
-                  <Text style={styles.perchedMark}>🪶</Text>
+                  <Text style={styles.perchedMark}>✓</Text>
                 ) : (
                   <Tap
                     style={styles.recruitBtn}
                     onPress={() => {
                       perchSage(row.user);
-                      setRecruited(`🪶 ${row.user.name.split(' ')[0]} now perches on your Tree — they’ll weigh in on your decisions`);
+                      setRecruited(`${row.user.name.split(' ')[0]} is now following your Tree — they’ll weigh in on your decisions`);
                     }}
                   >
-                    <Text style={styles.perchBtnText}>🪶 Perch</Text>
+                    <Text style={styles.perchBtnText}>Follow</Text>
                   </Tap>
                 ))}
             </View>

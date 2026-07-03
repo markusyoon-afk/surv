@@ -435,7 +435,7 @@ function ClaudeSettings() {
       ) : (
         <>
           <Text style={styles.hint}>
-            Paste an Anthropic API key (console.anthropic.com) to turn ✨ Suggest options
+            Paste an Anthropic API key (console.anthropic.com) to turn Suggest options
             into live Claude generation. The key stays on this device only.
           </Text>
           <View style={styles.claudeRow}>

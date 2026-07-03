@@ -1,4 +1,4 @@
-// +SURV — post a decision. Question → AI-suggested options → duration → audience → SURVit!
+// +SURV — post a decision. Question → AI-suggested options → time limit → audience → Post.
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
@@ -23,7 +23,7 @@ const HOUR = 3600_000;
 // Daily decisions, not deep thought: 8 hrs is the ceiling.
 // Optimal defaults: Forest 1 hr (always-on crowd), Tree 3 hrs (one phone-check cycle).
 const DURATIONS: Array<[string, number]> = [
-  ['⚡ ASAP', 5 * 60_000],
+  ['ASAP', 5 * 60_000],
   ['30 min', 30 * 60_000],
   ['1 hr', HOUR],
   ['3 hrs', 3 * HOUR],
@@ -267,7 +267,7 @@ export function NewSurv({
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={styles.ideasStrip}>
             {buildDrafts(survs.filter((s) => s.askerId === me.id), me, new Date(), 4, calendarEvents, healthConnected).map((d) => (
               <Tap key={d.id} style={styles.ideaCard} onPress={() => applyDraft(d)}>
-                <Text style={styles.ideaReason}>⚡ {d.reason}</Text>
+                <Text style={styles.ideaReason}>{d.reason}</Text>
                 <Text style={styles.ideaQ} numberOfLines={3}>{d.question}</Text>
               </Tap>
             ))}
@@ -295,7 +295,7 @@ export function NewSurv({
           <Text style={styles.label}>Pick a category</Text>
           <Tap style={styles.geoChip} onPress={locate} disabled={locating}>
             <Text style={styles.geoChipText}>
-              {locating ? '📍 Locating…' : geo ? `📍 ${geo.city ?? 'Located'}` : '📍 Use my location'}
+              {locating ? 'Locating…' : geo ? geo.city ?? 'Located' : 'Use my location'}
             </Text>
           </Tap>
         </View>
@@ -330,7 +330,7 @@ export function NewSurv({
             {busy ? (
               <ActivityIndicator size="small" color={colors.white} />
             ) : (
-              <Text style={styles.suggestText}>✨ Suggest options</Text>
+              <Text style={styles.suggestText}>Suggest options</Text>
             )}
           </Tap>
         </View>
@@ -364,7 +364,7 @@ export function NewSurv({
         )}
 
         <Tap style={styles.flightRow} onPress={() => setShowFlight(!showFlight)}>
-          <Text style={styles.label}>Flight — {durationLabel(duration)}</Text>
+          <Text style={styles.label}>Time limit — {durationLabel(duration)}</Text>
           <Ionicons
             name={showFlight ? 'chevron-up' : 'chevron-down'}
             size={15}
@@ -383,10 +383,10 @@ export function NewSurv({
           </>
         )}
 
-        <Text style={styles.label}>Your Nest, Tree, or Forest</Text>
+        <Text style={styles.label}>Who decides</Text>
         <View style={styles.chips}>
           <Chip
-            label="🌲 The Forest"
+            label="The Forest"
             on={isPublic}
             onPress={() => {
               const next = !isPublic;
@@ -396,7 +396,7 @@ export function NewSurv({
           />
           {!isPublic && (
             <Chip
-              label="🌳 My Tree"
+              label="My Tree"
               on={nestIds.length === myNests.length && myNests.length > 0}
               onPress={() => {
                 setNestIds(myNests.map((n) => n.id));
@@ -420,7 +420,7 @@ export function NewSurv({
         </View>
 
         <Tap style={[styles.survit, !canPost && styles.survitOff]} onPress={post}>
-          <Text style={styles.survitText}>SURVit!</Text>
+          <Text style={styles.survitText}>Post</Text>
         </Tap>
       </View>
     </ScrollView>
@@ -443,7 +443,7 @@ const SLIDER_MIN = 5 * 60_000; // ⚡ ASAP
 const SLIDER_MAX = 8 * HOUR;
 
 function durationLabel(ms: number): string {
-  if (ms <= 6 * 60_000) return '⚡ ASAP (5 min)';
+  if (ms <= 6 * 60_000) return 'ASAP (5 min)';
   if (ms < HOUR) return `${Math.round(ms / 60_000)} min`;
   if (ms <= 24 * HOUR) {
     const hrs = Math.floor(ms / HOUR);
@@ -489,7 +489,7 @@ function DurationSlider({ valueMs, onChange }: { valueMs: number; onChange: (ms:
       </View>
       <View style={[styles.sliderThumb, { left: `${pct * 100}%` }]} />
       <View style={styles.sliderEnds}>
-        <Text style={styles.sliderEndText}>⚡ ASAP</Text>
+        <Text style={styles.sliderEndText}>ASAP</Text>
         <Text style={styles.sliderEndText}>8 hrs</Text>
       </View>
     </View>
