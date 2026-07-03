@@ -187,7 +187,7 @@ export function suggestOptionsHeuristic(
   // the meal (no dinner houses for a coffee run).
   const allPlaces = ctx?.placesByCategory?.[category] ?? [];
   const places = category === 'Food' ? allPlaces.filter((p) => placeFitsMeal(p, meal)) : allPlaces;
-  for (const place of places.slice(0, 4)) {
+  for (const place of places.slice(0, 8)) {
     const miles = Math.round(place.distanceKm * 0.621 * 10) / 10;
     candidates.push({
       label: place.name,

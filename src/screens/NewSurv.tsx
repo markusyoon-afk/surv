@@ -57,6 +57,8 @@ export function NewSurv({
   const [rejected, setRejected] = useState<string[]>([]);
   // Only lock the category into suggestions when the user actually chose it.
   const [categoryPicked, setCategoryPicked] = useState(false);
+  // Labels already offered — ✨ Suggest pages through to the NEXT three.
+  const [shown, setShown] = useState<string[]>([]);
 
   const myNests = nests.filter(
     (n) => n.ownerId === me.id || n.members.some((m) => m.userId === me.id),
@@ -69,15 +71,26 @@ export function NewSurv({
     placesByCategory: nearbyPlaces,
   });
 
-  const suggestFor = async (q: string, lockCategory?: Category, exclude: string[] = rejected) => {
+  const suggestFor = async (q: string, lockCategory?: Category, page = false) => {
     setBusy(true);
     try {
-      const result = await suggestOptions(q, me, 3, {
+      const baseExclude = page ? [...rejected, ...shown, ...options.map((o) => o.label)] : rejected;
+      let result = await suggestOptions(q, me, 3, {
         ...suggestCtx(),
         categoryHint: lockCategory,
-        excludeLabels: exclude,
+        excludeLabels: baseExclude,
       });
+      if (page && result.options.length < 3) {
+        // Pool exhausted — wrap around and start the cycle fresh.
+        setShown([]);
+        result = await suggestOptions(q, me, 3, {
+          ...suggestCtx(),
+          categoryHint: lockCategory,
+          excludeLabels: rejected,
+        });
+      }
       setCategory(lockCategory ?? result.category);
+      setShown((prev) => (page ? [...prev, ...result.options.map((o) => o.label)] : result.options.map((o) => o.label)));
       setOptions((prev) => {
         const kept = prev.filter((o) => o.source === 'user');
         return [...kept, ...result.options].slice(0, 4);
@@ -87,7 +100,7 @@ export function NewSurv({
     }
   };
 
-  const suggest = () => suggestFor(question, categoryPicked ? category : undefined);
+  const suggest = () => suggestFor(question, categoryPicked ? category : undefined, true);
 
   /** X on a suggestion rejects it — and a fresh idea takes its place. */
   const rejectOption = async (opt: SurvOption) => {

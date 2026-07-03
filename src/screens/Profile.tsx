@@ -52,7 +52,7 @@ export function Profile() {
             style={styles.inviteBtn}
             onPress={() =>
               shareText(
-                `🦉 I'm on SURV — my personal decision engine. Help me make better calls (and become a sage yourself): ${inviteUrl(me.name)}`,
+                `🦉 Be part of my daily decisions — I'm on SURV, where my circle helps me decide the everyday stuff (and we all get wiser doing it): ${inviteUrl(me.name)}`,
               )
             }
           >

@@ -105,7 +105,7 @@ function Shell() {
     clearShareHash();
     if (payload.kind === 'invite') {
       addAcquaintance(payload.inviterName);
-      setImportNotice(`🦉 ${payload.inviterName} invited you — welcome to SURV. Decide together, become sages.`);
+      setImportNotice(`🦉 ${payload.inviterName} invited you into their daily decisions — welcome to SURV.`);
     } else if (payload.kind === 'surv') {
       const imported = importSurv(payload.packet);
       if (imported) {
@@ -127,6 +127,7 @@ function Shell() {
   return (
     <NightSky>
       <SafeAreaView style={styles.safe}>
+        <View style={styles.frame}>
         <View style={styles.header}>
           <View style={styles.logoRow}>
             <OwlAvatar clout={me.clout} size={42} />
@@ -135,10 +136,10 @@ function Shell() {
               <Text style={styles.tagline}>Live it! SURV it!</Text>
             </View>
           </View>
-          <View style={styles.meterMini}>
+          <Pressable style={styles.meterMini} onPress={() => setTab('profile')}>
             <View style={[styles.meterMiniFill, { width: `${me.clout}%` }]} />
             <Text style={styles.meterMiniText}>{Math.round(me.clout)}%</Text>
-          </View>
+          </Pressable>
         </View>
 
         {dueForMe > 0 && !nudgeDismissed && tab !== 'profile' && (
@@ -227,6 +228,7 @@ function Shell() {
         )}
         {showOnboarding && <Onboarding defaultName={me.name} onDone={dismissOnboarding} />}
         <StatusBar style="light" />
+        </View>
       </SafeAreaView>
     </NightSky>
   );
@@ -293,6 +295,8 @@ const bootStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  // Tablets/desktop read as a centered column, phones use the full width.
+  frame: { flex: 1, width: '100%', maxWidth: 720, alignSelf: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

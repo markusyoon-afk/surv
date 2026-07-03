@@ -385,6 +385,19 @@ test('all top-5 trending SURVs are fully SMART', () => {
   }
 });
 
+test('suggest paging: excluding shown labels yields the NEXT three', () => {
+  const q = 'Where should we eat dinner tonight?';
+  const first = suggestOptionsHeuristic(q, me, 3, { users, nests });
+  const second = suggestOptionsHeuristic(q, me, 3, {
+    users,
+    nests,
+    excludeLabels: first.options.map((o) => o.label),
+  });
+  assert.ok(second.options.length > 0, 'a second page exists');
+  const firstSet = new Set(first.options.map((o) => o.label));
+  assert.ok(second.options.every((o) => !firstSet.has(o.label)), 'no overlap between pages');
+});
+
 test('rejected labels never come back in suggestions', () => {
   const first = suggestOptionsHeuristic('Where should we eat dinner tonight?', me, 3, { users, nests });
   const rejectedLabel = first.options[0].label;
