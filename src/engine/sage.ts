@@ -228,6 +228,16 @@ export function applyArenaResult(
   return { cloutDelta, sageDelta };
 }
 
+/** Daily decisions, not deep thought: no flight exceeds 8 hours. */
+export const MAX_FLIGHT_MS = 8 * 3600_000;
+
+/** Legacy SURVs (pre-8-hour era) get their flights fitted to the ceiling. */
+export function clampFlight(surv: Surv): Surv {
+  return surv.expiresAt - surv.createdAt > MAX_FLIGHT_MS
+    ? { ...surv, expiresAt: surv.createdAt + MAX_FLIGHT_MS }
+    : surv;
+}
+
 export function msRemaining(surv: Surv, now = Date.now()): number {
   return Math.max(0, surv.expiresAt - now);
 }

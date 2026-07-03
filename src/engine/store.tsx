@@ -9,7 +9,7 @@ import { FALLBACK_MEDIA, fetchHotMedia, type HotMedia } from '../lib/media';
 import { publishLive, subscribeLive } from '../lib/live';
 import { arenaResult } from './arena';
 import { adviseOption, advisorRationale, avatarAt, pickAdvisor } from './population';
-import { applyArenaResult, applyOutcome, voterWeight } from './sage';
+import { applyArenaResult, applyOutcome, clampFlight, voterWeight } from './sage';
 import type { SurvDraft } from './drafts';
 import { parseIcs, type CalEvent } from './schedule';
 import { ME, levelUpFounder, seedNests, seedSurvs, seedUsers } from './seed';
@@ -235,7 +235,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             setUsers(missing.length > 0 ? [...migrated, ...missing] : migrated);
             // Migration: the SATT Crew demo nest was retired.
             setNests(saved.nests.filter((n) => n.id !== 'n_satt'));
-            setSurvs(sweep(saved.survs));
+            // Migration: legacy flights get fitted to the 8-hour ceiling.
+            setSurvs(sweep(saved.survs.map(clampFlight)));
             setCalendarEvents(saved.calendarEvents ?? []);
             setGeo(saved.geo ?? null);
             setNearbyPlaces(saved.nearbyPlaces ?? {});
@@ -504,12 +505,11 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         if (!users.some((u) => u.id === asker.id)) {
           setUsers((prev) => [...prev, asker]);
         }
+        const capped = clampFlight({ ...surv, votes: [], comments: [] } as Surv);
         const imported: Surv = {
-          ...surv,
+          ...capped,
           askerId: asker.id,
-          votes: [],
-          comments: [],
-          status: surv.expiresAt > Date.now() ? 'live' : 'deciding',
+          status: capped.expiresAt > Date.now() ? 'live' : 'deciding',
         };
         setSurvs((prev) => [imported, ...prev]);
         return imported;

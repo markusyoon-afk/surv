@@ -10,9 +10,9 @@ import { suggestConnections } from './connections';
 import { buildDigest } from './digest';
 import { TRENDING_SURVS } from './trending';
 import { smartCheck, smartScore } from './smart';
-import { adaptiveGain, applyArenaResult, applyOutcome, formatRemaining, getPairTrust, surpriseFactor, tally, voterWeight, winningOption } from './sage';
+import { adaptiveGain, applyArenaResult, applyOutcome, clampFlight, formatRemaining, getPairTrust, MAX_FLIGHT_MS, surpriseFactor, tally, voterWeight, winningOption } from './sage';
 import { detectCategory, detectMeal, placeFitsMeal, suggestOptionsHeuristic, topInfluencer } from './suggest';
-import { FOUNDER_PROFILE, levelUpFounder, seedNests, seedUsers } from './seed';
+import { FOUNDER_PROFILE, levelUpFounder, seedNests, seedSurvs, seedUsers } from './seed';
 import type { Surv, User } from './types';
 
 const users = seedUsers();
@@ -560,6 +560,31 @@ test('meal context is detected from the question', () => {
   assert.equal(detectMeal('What’s for breakfast?'), 'breakfast');
   assert.equal(detectMeal('Lunch today — where should I eat?'), 'lunch');
   assert.equal(detectMeal('Dinner tonight — where should I go?'), 'dinner');
+});
+
+test('every flight fits the 8-hour ceiling — legacy, seeds, and imports', () => {
+  const base: Surv = {
+    id: 'legacy',
+    askerId: me.id,
+    question: 'A decision from the 24-hour era?',
+    category: 'Living',
+    options: [
+      { id: 'a', label: 'Yes', source: 'user' },
+      { id: 'b', label: 'No', source: 'user' },
+    ],
+    audience: { kind: 'public' },
+    createdAt: 0,
+    expiresAt: 3 * 24 * 3600_000, // 3-day legacy flight
+    status: 'live',
+    votes: [],
+  };
+  const fitted = clampFlight(base);
+  assert.equal(fitted.expiresAt - fitted.createdAt, MAX_FLIGHT_MS, '3-day flight fitted to 8h');
+  const fine = clampFlight({ ...base, expiresAt: 3 * 3600_000 });
+  assert.equal(fine.expiresAt, 3 * 3600_000, 'short flights untouched');
+  for (const s of seedSurvs()) {
+    assert.ok(s.expiresAt - s.createdAt <= MAX_FLIGHT_MS, `seed ${s.id} exceeds 8h`);
+  }
 });
 
 test('category taps rotate fresh questions, never repeating', () => {

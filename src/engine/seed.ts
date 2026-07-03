@@ -216,7 +216,7 @@ export function seedSurvs(now = Date.now()): Surv[] {
       ],
       audience: { kind: 'nests', nestIds: ['n_fam'] },
       createdAt: now - 3 * HOUR,
-      expiresAt: now + 21 * HOUR,
+      expiresAt: now + 4 * HOUR, // 7h flight — within the 8h ceiling
       status: 'live',
       votes: [
         { userId: 'u_linda', optionId: 'o_pasta', weight: 0.71, votedAt: now - 2 * HOUR },
@@ -236,13 +236,13 @@ export function seedSurvs(now = Date.now()): Surv[] {
         { id: 'o_bu', label: 'BU', source: 'user' },
       ],
       audience: { kind: 'nests', nestIds: ['n_fam'] },
-      createdAt: now - 20 * HOUR,
-      expiresAt: now + 4 * HOUR,
+      createdAt: now - 5 * HOUR,
+      expiresAt: now + 2 * HOUR, // 7h flight
       status: 'live',
       votes: [
-        { userId: ME, optionId: 'o_nu', weight: 0.55, votedAt: now - 18 * HOUR },
-        { userId: 'u_eric', optionId: 'o_nu', weight: 0.5, votedAt: now - 10 * HOUR },
-        { userId: 'u_mike', optionId: 'o_nyu', weight: 0.49, votedAt: now - 6 * HOUR },
+        { userId: ME, optionId: 'o_nu', weight: 0.55, votedAt: now - 4 * HOUR },
+        { userId: 'u_eric', optionId: 'o_nu', weight: 0.5, votedAt: now - 3 * HOUR },
+        { userId: 'u_mike', optionId: 'o_nyu', weight: 0.49, votedAt: now - 2 * HOUR },
       ],
     },
     {
@@ -257,13 +257,13 @@ export function seedSurvs(now = Date.now()): Surv[] {
         { id: 'o_color', label: 'Depends on the color', source: 'user' },
       ],
       audience: { kind: 'public' },
-      createdAt: now - 30 * HOUR,
-      expiresAt: now + 18 * HOUR,
+      createdAt: now - 6 * HOUR,
+      expiresAt: now + 90 * 60_000, // 7.5h flight
       status: 'live',
       votes: [
-        { userId: 'u_insup', optionId: 'o_yes', weight: 0.5, votedAt: now - 20 * HOUR },
-        { userId: 'u_dan', optionId: 'o_no', weight: 0.44, votedAt: now - 12 * HOUR },
-        { userId: 'u_eric', optionId: 'o_no', weight: 0.46, votedAt: now - 8 * HOUR },
+        { userId: 'u_insup', optionId: 'o_yes', weight: 0.5, votedAt: now - 5 * HOUR },
+        { userId: 'u_dan', optionId: 'o_no', weight: 0.44, votedAt: now - 4 * HOUR },
+        { userId: 'u_eric', optionId: 'o_no', weight: 0.46, votedAt: now - 3 * HOUR },
       ],
     },
     {
@@ -278,27 +278,27 @@ export function seedSurvs(now = Date.now()): Surv[] {
         { id: 'o_cook', label: 'Cookout at my place', source: 'user' },
       ],
       audience: { kind: 'nests', nestIds: ['n_foodies'] },
-      createdAt: now - 2 * DAY,
-      expiresAt: now - 1 * HOUR,
+      createdAt: now - 9 * HOUR,
+      expiresAt: now - 1 * HOUR, // full 8h flight, landed an hour ago
       status: 'deciding',
       votes: [
-        { userId: 'u_linda', optionId: 'o_thai', weight: 0.73, votedAt: now - DAY },
-        { userId: 'u_mike', optionId: 'o_cook', weight: 0.5, votedAt: now - DAY },
-        { userId: 'u_insup', optionId: 'o_thai', weight: 0.51, votedAt: now - 30 * HOUR },
-        { userId: 'u_dan', optionId: 'o_greek', weight: 0.45, votedAt: now - 26 * HOUR },
+        { userId: 'u_linda', optionId: 'o_thai', weight: 0.73, votedAt: now - 8 * HOUR },
+        { userId: 'u_mike', optionId: 'o_cook', weight: 0.5, votedAt: now - 7 * HOUR },
+        { userId: 'u_insup', optionId: 'o_thai', weight: 0.51, votedAt: now - 6 * HOUR },
+        { userId: 'u_dan', optionId: 'o_greek', weight: 0.45, votedAt: now - 5 * HOUR },
       ],
       comments: [
         {
           id: 'c_seed1',
           userId: 'u_linda',
           text: 'Ruby of Siam, trust me — get the crispy duck curry.',
-          at: now - DAY,
+          at: now - 8 * HOUR,
         },
         {
           id: 'c_seed2',
           userId: 'u_mike',
           text: 'Cookout means I can finally show off the smoker. Just saying.',
-          at: now - 22 * HOUR,
+          at: now - 6 * HOUR,
         },
       ],
     },
@@ -315,13 +315,13 @@ export function seedSurvs(now = Date.now()): Surv[] {
       ],
       audience: { kind: 'nests', nestIds: ['n_fam'] },
       createdAt: now - 6 * DAY,
-      expiresAt: now - 4 * DAY,
+      expiresAt: now - 6 * DAY + 8 * HOUR, // historical, but an 8h flight
       status: 'acted',
       actedOptionId: 'o_hybrid',
       votes: [
-        { userId: 'u_eric', optionId: 'o_hybrid', weight: 0.6, votedAt: now - 5 * DAY },
-        { userId: 'u_mike', optionId: 'o_hybrid', weight: 0.5, votedAt: now - 5 * DAY },
-        { userId: 'u_joe', optionId: 'o_road', weight: 0.48, votedAt: now - 5 * DAY },
+        { userId: 'u_eric', optionId: 'o_hybrid', weight: 0.6, votedAt: now - 6 * DAY + 2 * HOUR },
+        { userId: 'u_mike', optionId: 'o_hybrid', weight: 0.5, votedAt: now - 6 * DAY + 3 * HOUR },
+        { userId: 'u_joe', optionId: 'o_road', weight: 0.48, votedAt: now - 6 * DAY + 4 * HOUR },
       ],
     },
   ];
