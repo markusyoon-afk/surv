@@ -29,9 +29,11 @@ const TIER_SCORE: Record<ClosenessTier, number> = {
 const PUBLIC_CLOSENESS = 0.3;
 
 // Learning rates (per graded outcome).
+// v2.1 fair-play rule: your meter NEVER drops when your option wasn't the one
+// acted on — risk attaches only to the option that was actually chosen.
 const GOOD_ALIGNED_SAGE = 4; // toward 100, diminishing
-const GOOD_MISALIGNED_SAGE = -1;
-const BAD_ALIGNED_SAGE = -3;
+const GOOD_MISALIGNED_SAGE = 0; // not picked → no penalty, ever
+const BAD_ALIGNED_SAGE = -3; // you backed the chosen option and it went bad
 const BAD_MISALIGNED_SAGE = 2; // right dissent is rewarded
 const CLOUT_STEP = 1;
 const TRUST_STEP = 0.08;
@@ -171,7 +173,7 @@ export function applyOutcome(
     if (outcome === 'good') {
       sageDelta = aligned ? GOOD_ALIGNED_SAGE * gain * surprise : GOOD_MISALIGNED_SAGE;
       cloutDelta = aligned ? CLOUT_STEP : 0;
-      trustDelta = aligned ? TRUST_STEP * surprise : -TRUST_STEP / 2;
+      trustDelta = aligned ? TRUST_STEP * surprise : 0; // not picked → untouched
     } else {
       sageDelta = aligned ? BAD_ALIGNED_SAGE * crowdPenalty : BAD_MISALIGNED_SAGE * gain * surprise;
       cloutDelta = aligned ? -CLOUT_STEP : CLOUT_STEP;
@@ -192,8 +194,8 @@ export function applyOutcome(
     });
   }
 
-  // Asker earns clout for closing the loop — keeps the flywheel spinning.
-  asker.clout = clamp(asker.clout + CLOUT_STEP, 1, 100);
+  // Asker accountability: a good call earns Clout; owning a bad one costs it.
+  asker.clout = clamp(asker.clout + (outcome === 'good' ? CLOUT_STEP : -CLOUT_STEP), 1, 100);
   return deltas;
 }
 
@@ -214,7 +216,7 @@ export function applyArenaResult(
   let sageDelta: number;
   let cloutDelta: number;
   if (outcome === 'good') {
-    sageDelta = aligned ? 3 * gain : -0.5;
+    sageDelta = aligned ? 3 * gain : 0; // not picked → no penalty
     cloutDelta = aligned ? 1 : 0;
   } else {
     sageDelta = aligned ? -2 : 1.5 * gain;

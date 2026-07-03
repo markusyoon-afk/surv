@@ -554,7 +554,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
               : '';
         return outcome === 'good'
           ? `👍 Good call locked in — ${topLine}your Clout +1`
-          : `👎 Noted — ${topLine}your Clout +1`;
+          : `👎 Owned it — ${topLine}your Clout −1, wisdom +1`;
       },
 
       addComment: (survId, text) => {

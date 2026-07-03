@@ -338,12 +338,12 @@ function SageAlgorithmCard() {
             1.0 · regular 0.75 · outer 0.5 · public 0.3. PairTrust is 0–1 per person,
             starts 0.5.
           </Text>
-          <Text style={styles.algoRow}>Verdict 👍 and you backed the acted option → CategorySAGE +4·(100−current)/70, Clout +1, trust +0.08</Text>
-          <Text style={styles.algoRow}>Verdict 👍 but you opposed → CategorySAGE −1, trust −0.04</Text>
-          <Text style={styles.algoRow}>Verdict 👎 and you backed it → CategorySAGE −3, Clout −1, trust −0.08</Text>
-          <Text style={styles.algoRow}>Verdict 👎 but you warned against it → CategorySAGE +2, Clout +1, trust +0.08</Text>
-          <Text style={styles.algoRow}>Arena: good call backed → +3·(100−current)/70 SAGE, +1 Clout · wrong call → −2 SAGE, −1 Clout</Text>
-          <Text style={styles.algoRow}>Closing your own loop (grading) → +1 Clout — the flywheel reward</Text>
+          <Text style={styles.algoRow}>Verdict 👍 and you backed the picked option → CategorySAGE +4·gain·surprise, Clout +1, trust up</Text>
+          <Text style={styles.algoRow}>Your option NOT picked → zero change, ever (fair-play rule, v2.1)</Text>
+          <Text style={styles.algoRow}>Verdict 👎 and you backed the pick → CategorySAGE −3·crowd, Clout −1, trust down</Text>
+          <Text style={styles.algoRow}>Verdict 👎 but you warned against it → CategorySAGE +2·gain·surprise, Clout +1</Text>
+          <Text style={styles.algoRow}>Asker: 👍 → Clout +1 · 👎 → Clout −1 (you own the call)</Text>
+          <Text style={styles.algoRow}>Arena: same rules, gentler steps (+3 aligned-good, −2 aligned-bad, 0 if not picked)</Text>
           <Text style={styles.hint}>
             Gains shrink as you climb (the (100−current)/70 factor), so a Super Sage is
             earned through a long record of good calls — full math in docs/SAGE-ALGORITHM.md.

@@ -108,7 +108,8 @@ test('good outcome boosts aligned voters and pair trust', () => {
   assert.ok(getPairTrust(copies.get(me.id)!, linda.id) > trustBefore);
 
   const danDelta = deltas.find((d) => d.userId === dan.id)!;
-  assert.ok(!danDelta.aligned && danDelta.categorySageDelta < 0);
+  // v2.1 fair play: your option wasn't picked → your meter is untouched.
+  assert.ok(!danDelta.aligned && danDelta.categorySageDelta === 0 && danDelta.trustDelta === 0);
 });
 
 test('bad outcome rewards the dissenter who warned you', () => {
@@ -123,11 +124,16 @@ test('bad outcome rewards the dissenter who warned you', () => {
   assert.ok((copies.get(dan.id)!.categorySage.Shopping ?? 0) > danBefore);
 });
 
-test('asker earns clout for closing the loop', () => {
-  const { surv, copies } = makeActedSurv();
-  const before = copies.get(me.id)!.clout;
-  applyOutcome(surv, 'good', copies);
-  assert.equal(copies.get(me.id)!.clout, before + 1);
+test('asker accountability: good call earns clout, bad call costs it', () => {
+  const good = makeActedSurv();
+  const beforeGood = good.copies.get(me.id)!.clout;
+  applyOutcome(good.surv, 'good', good.copies);
+  assert.equal(good.copies.get(me.id)!.clout, beforeGood + 1);
+
+  const bad = makeActedSurv();
+  const beforeBad = bad.copies.get(me.id)!.clout;
+  applyOutcome(bad.surv, 'bad', bad.copies);
+  assert.equal(bad.copies.get(me.id)!.clout, beforeBad - 1);
 });
 
 test('connector-enriched suggestions for food questions', () => {

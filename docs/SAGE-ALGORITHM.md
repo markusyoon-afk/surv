@@ -50,14 +50,20 @@ proven track record; personal history (10%) personalizes without echo-chambering
 Let `cur = CategorySAGE(v, c)` and `g = (100 − cur)/70` (diminishing-returns factor).
 For each voter v ≠ asker, `aligned` = voted for the acted-on option:
 
-| Outcome | Aligned? | ΔCategorySAGE | ΔClout | ΔPairTrust |
-|---|---|---|---|---|
-| 👍 good | yes | **+4·g** | +1 | +0.08 |
-| 👍 good | no  | −1 | 0 | −0.04 |
-| 👎 bad  | yes | −3 | −1 | −0.08 |
-| 👎 bad  | no (warned you) | **+2** | +1 | +0.08 |
+The asker acts on ANY option they choose — not necessarily the highest-voted.
+`aligned` = the voter backed the option the asker actually picked.
 
-The asker gets **+1 Clout** for grading at all — closing the loop is the flywheel.
+| Outcome | Your option picked? | ΔCategorySAGE | ΔClout | ΔPairTrust |
+|---|---|---|---|---|
+| 👍 good | yes | **+4·g·surprise** | +1 | +0.08·surprise |
+| 👍 good | no  | **0** | 0 | 0 |
+| 👎 bad  | yes | −3·crowd | −1 | −0.08 |
+| 👎 bad  | no (warned them) | **+2·g·surprise** | +1 | +0.08·surprise |
+
+**v2.1 fair-play rule:** if your option wasn't picked, your meter is NEVER touched —
+risk attaches only to the chosen option. Losing a vote is free; backing a bad pick
+is not. **Asker accountability:** grading 👍 earns the asker +1 Clout; grading 👎
+costs −1 — you own your own call either way.
 
 **Properties:** right dissent is rewarded (prevents herding); losses are cheaper
 than symmetric gains (safe to participate); `g` makes the climb logarithmic —
