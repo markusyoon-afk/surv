@@ -3,7 +3,7 @@
 // behind the same interface.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchNearbyPlaces, GEO_CATEGORIES, getCurrentPosition, reverseCity, type NearbyPlace } from '../lib/geo';
 import { publishLive, subscribeLive } from '../lib/live';
 import { arenaResult } from './arena';
@@ -143,6 +143,44 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const skipNextSave = useRef(false);
 
+  // Latest state for timer callbacks (advisor bursts outlive their render).
+  const stateRef = useRef({ users, nests, survs });
+  stateRef.current = { users, nests, survs };
+
+  /** One AI advisor engages a SURV: informed vote, often with a reasoned comment. */
+  const engageAdvisor = useCallback((survId: string): string | null => {
+    const { users: u, nests: n, survs: s } = stateRef.current;
+    const surv = s.find((x) => x.id === survId);
+    const meUser = u.find((x) => x.id === ME);
+    if (!surv || !meUser || surv.status !== 'live' || surv.expiresAt <= Date.now()) return null;
+    const excludeIds = new Set(surv.votes.map((v) => v.userId));
+    const advisor = pickAdvisor(
+      surv.category,
+      excludeIds,
+      Date.now() + surv.id.length * 131 + surv.votes.length * 17,
+    );
+    if (excludeIds.has(advisor.id)) return null;
+    const option = adviseOption(advisor, surv.options, Date.now() + surv.votes.length);
+    const weight = voterWeight(advisor, meUser, surv.category, n);
+    const withComment = Math.random() < 0.45;
+    const rationale = advisorRationale(advisor, surv.category, option, Date.now() + 1);
+    const now = Date.now();
+    setUsers((prev) => (prev.some((x) => x.id === advisor.id) ? prev : [...prev, advisor]));
+    setSurvs((prev) =>
+      prev.map((x) => {
+        if (x.id !== survId || x.votes.some((v) => v.userId === advisor.id)) return x;
+        return {
+          ...x,
+          votes: [...x.votes, { userId: advisor.id, optionId: option.id, weight, votedAt: now }],
+          comments: withComment
+            ? [...(x.comments ?? []), { id: `c_ai_${now}_${advisor.id}`, userId: advisor.id, text: rationale, at: now }]
+            : x.comments,
+        };
+      }),
+    );
+    return advisor.name;
+  }, []);
+
   // Hydrate once from disk; seeds remain the first-run experience.
   useEffect(() => {
     (async () => {
@@ -270,37 +308,22 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         }
         if (settled.length > 0) setArenaProcessed((prev) => [...prev, ...settled]);
 
-        // 2. AI advisors engage my live SURVs with informed votes + reasons.
+        // 2. AI advisors engage my live SURVs. The Forest floods (up to ~40
+        //    voices, several per beat); Nest SURVs get a gentle trickle.
         const mine = survs.filter(
-          (s) => s.askerId === ME && s.status === 'live' && s.expiresAt > now && s.votes.length < 5,
+          (s) => s.askerId === ME && s.status === 'live' && s.expiresAt > now,
         );
         for (const surv of mine) {
-          if (Math.random() > 0.5) continue; // trickle, don't flood
-          const excludeIds = new Set(surv.votes.map((v) => v.userId));
-          const advisor = pickAdvisor(surv.category, excludeIds, now + surv.id.length);
-          if (!users.some((u) => u.id === advisor.id)) {
-            setUsers((prev) => (prev.some((u) => u.id === advisor.id) ? prev : [...prev, advisor]));
+          const isForest = surv.audience.kind === 'public';
+          const cap = isForest ? 40 : 5;
+          if (surv.votes.length >= cap) continue;
+          const rounds = isForest ? 1 + Math.floor(Math.random() * 3) : Math.random() < 0.5 ? 1 : 0;
+          for (let k = 0; k < rounds; k++) {
+            const name = engageAdvisor(surv.id);
+            if (name && k === 0) {
+              news.push(`${name} voted on “${surv.question.slice(0, 40)}…” with a reason 🤖`);
+            }
           }
-          const option = adviseOption(advisor, surv.options, now);
-          const weight = voterWeight(advisor, me, surv.category, nests);
-          const withComment = Math.random() < 0.6;
-          const rationale = advisorRationale(advisor, surv.category, option, now + 1);
-          setSurvs((prev) =>
-            prev.map((s) => {
-              if (s.id !== surv.id || s.votes.some((v) => v.userId === advisor.id)) return s;
-              return {
-                ...s,
-                votes: [...s.votes, { userId: advisor.id, optionId: option.id, weight, votedAt: now }],
-                comments: withComment
-                  ? [
-                      ...(s.comments ?? []),
-                      { id: `c_ai_${now}_${advisor.id}`, userId: advisor.id, text: rationale, at: now },
-                    ]
-                  : s.comments,
-              };
-            }),
-          );
-          news.push(`${advisor.name} voted on “${surv.question.slice(0, 40)}…” with a reason 🤖`);
         }
 
         return news;
@@ -430,6 +453,13 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
           comments: [],
         };
         setSurvs((prev) => [surv, ...prev]);
+        // The Forest answers immediately: a staggered burst of advisor votes
+        // lands in the first seconds, then the heartbeat keeps them coming.
+        if (audience.kind === 'public') {
+          for (const delay of [1200, 3000, 5500, 8500, 12_000, 16_500, 22_000, 28_000]) {
+            setTimeout(() => engageAdvisor(surv.id), delay);
+          }
+        }
         return surv;
       },
 
