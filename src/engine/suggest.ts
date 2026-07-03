@@ -17,6 +17,8 @@ export interface SuggestContext {
   placesByCategory?: Partial<Record<Category, NearbyPlaceLike[]>>;
   /** When the user picked the category explicitly, trust it over text detection. */
   categoryHint?: Category;
+  /** Labels already shown/rejected — never suggest these again. */
+  excludeLabels?: string[];
 }
 
 let optionSeq = 0;
@@ -47,7 +49,7 @@ const CATEGORY_KEYWORDS: Array<[Category, RegExp]> = [
   ['Style', /\b(wear|outfit|hair|shoes|dress|style)\b/i],
   ['Entertainment', /\b(watch|movie|show|concert|stream|series|film)\b/i],
   ['Work', /\b(work|job|career|boss|meeting|client|coworker|hire)\b/i],
-  ['Relationships', /\b(friend|wife|husband|date|family|mom|dad|brother|sister|girlfriend|boyfriend)\b/i],
+  ['Relationships', /\b(friends?|wife|husband|date|family|mom|dad|brother|sister|girlfriend|boyfriend|buddies|catch up)\b/i],
   ['Living', /\b(move|apartment|neighborhood|rent|house|home|budget)\b/i],
 ];
 
@@ -177,18 +179,23 @@ export function suggestOptionsHeuristic(
     candidates.push({ label: template, source: 'ai', why: 'Based on your past SURVs', score: 44 - i * 6 });
   });
 
-  candidates.sort((a, b) => b.score - a.score);
+  // Drop anything the user already has or explicitly rejected.
+  const excluded = new Set((ctx?.excludeLabels ?? []).map((l) => l.trim().toLowerCase()));
+  const filtered = excluded.size
+    ? candidates.filter((c) => !excluded.has(c.label.trim().toLowerCase()))
+    : candidates;
+  filtered.sort((a, b) => b.score - a.score);
 
   // Attribute the leading pick to your strongest sage in this category.
   const influencer = topInfluencer(user, category, ctx);
-  if (influencer && candidates.length > 0 && candidates[0].source !== 'ai') {
-    candidates[0].why += ` · ${influencer.user.name}’s pick (${category} sage ${Math.round(influencer.sage)}%)`;
-    candidates[0].score += 10;
+  if (influencer && filtered.length > 0 && filtered[0].source !== 'ai') {
+    filtered[0].why += ` · ${influencer.user.name}’s pick (${category} sage ${Math.round(influencer.sage)}%)`;
+    filtered[0].score += 10;
   }
 
   return {
     category,
-    options: candidates.slice(0, count).map((c) => ({
+    options: filtered.slice(0, count).map((c) => ({
       id: oid(),
       label: c.label,
       source: c.source,

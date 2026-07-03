@@ -20,7 +20,7 @@ import { colors } from './src/theme';
 type Tab = 'home' | 'new' | 'nests' | 'profile';
 
 const TABS: Array<[Tab, keyof typeof Ionicons.glyphMap, string]> = [
-  ['home', 'home', 'The Nest'],
+  ['home', 'home', 'Tree'],
   ['new', 'add-circle', 'New SURV'],
   ['nests', 'people', 'Nests'],
   ['profile', 'person', 'You'],

@@ -13,9 +13,9 @@ import {
 } from 'react-native';
 import { DraftCards } from '../components/DraftCards';
 import { categoryQuestion, type SurvDraft } from '../engine/drafts';
-import { SMART_LABELS, smartCheck } from '../engine/smart';
 import { suggestOptions, type SuggestContext } from '../engine/suggest';
 import { useSurv } from '../engine/store';
+import { TRENDING_SURVS, type TrendingSurv } from '../engine/trending';
 import { CATEGORIES, type Category, type SurvOption } from '../engine/types';
 import { CATEGORY_ICONS, colors, radius } from '../theme';
 
@@ -50,6 +50,7 @@ export function NewSurv({
   const [isPublic, setIsPublic] = useState(false);
   const [nestIds, setNestIds] = useState<string[]>([nests[0]?.id].filter(Boolean));
   const [busy, setBusy] = useState(false);
+  const [rejected, setRejected] = useState<string[]>([]);
 
   const myNests = nests.filter(
     (n) => n.ownerId === me.id || n.members.some((m) => m.userId === me.id),
@@ -62,10 +63,14 @@ export function NewSurv({
     placesByCategory: nearbyPlaces,
   });
 
-  const suggestFor = async (q: string, lockCategory?: Category) => {
+  const suggestFor = async (q: string, lockCategory?: Category, exclude: string[] = rejected) => {
     setBusy(true);
     try {
-      const result = await suggestOptions(q, me, 3, { ...suggestCtx(), categoryHint: lockCategory });
+      const result = await suggestOptions(q, me, 3, {
+        ...suggestCtx(),
+        categoryHint: lockCategory,
+        excludeLabels: exclude,
+      });
       setCategory(lockCategory ?? result.category);
       setOptions((prev) => {
         const kept = prev.filter((o) => o.source === 'user');
@@ -76,7 +81,47 @@ export function NewSurv({
     }
   };
 
-  const suggest = () => suggestFor(question);
+  const suggest = () => suggestFor(question, category);
+
+  /** X on a suggestion rejects it — and a fresh idea takes its place. */
+  const rejectOption = async (opt: SurvOption) => {
+    const nextRejected = [...rejected, opt.label];
+    setRejected(nextRejected);
+    const remaining = options.filter((o) => o.id !== opt.id);
+    setOptions(remaining);
+    if (opt.source === 'user' || question.trim().length < 8) return;
+    const result = await suggestOptions(question, me, 1, {
+      ...suggestCtx(),
+      categoryHint: category,
+      excludeLabels: [...nextRejected, ...remaining.map((o) => o.label)],
+    });
+    if (result.options.length > 0) {
+      setOptions((prev) => (prev.length < 4 ? [...prev, result.options[0]] : prev));
+    }
+  };
+
+  /** Tap a suggestion to edit it yourself — it moves into the manual field. */
+  const editOption = (opt: SurvOption) => {
+    setOptions((prev) => prev.filter((o) => o.id !== opt.id));
+    setManual(opt.label);
+  };
+
+  /** One-tap adoption of a proven SURV. */
+  const applyTrending = (t: TrendingSurv) => {
+    setQuestion(t.question);
+    setCategory(t.category);
+    setOptions(
+      t.options.map((label, i) => ({
+        id: `opt_tr_${Date.now()}_${i}`,
+        label,
+        source: 'nest',
+        why: 'Trending on SURV',
+      })),
+    );
+    const preset = DURATIONS.find(([, ms]) => ms >= t.durationMs);
+    setDuration(preset ? preset[1] : DURATIONS[2][1]);
+    setRejected([]);
+  };
 
   /** Tap a category with an empty question → SURV drafted from habits + schedule + location. */
   const tapCategory = (c: Category) => {
@@ -141,7 +186,30 @@ export function NewSurv({
 
   return (
     <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
-      {question.trim() === '' && options.length === 0 && <DraftCards onSelect={applyDraft} />}
+      {question.trim() === '' && options.length === 0 && (
+        <>
+          <DraftCards onSelect={applyDraft} />
+          <View style={styles.trendingWrap}>
+            <Text style={styles.trendingTitle}>TOP SURVS OUT THERE — TAP TO REUSE</Text>
+            {TRENDING_SURVS.map((t) => (
+              <Pressable key={t.id} style={styles.trendingCard} onPress={() => applyTrending(t)}>
+                <Ionicons
+                  name={CATEGORY_ICONS[t.category] as keyof typeof Ionicons.glyphMap}
+                  size={15}
+                  color={colors.sage}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.trendingQ}>{t.question}</Text>
+                  <Text style={styles.trendingMeta}>
+                    {t.category} · reused {t.reuses}× · options included
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={15} color={colors.star} />
+              </Pressable>
+            ))}
+          </View>
+        </>
+      )}
       <View style={styles.card}>
         <TextInput
           style={styles.question}
@@ -177,19 +245,6 @@ export function NewSurv({
           })}
         </View>
 
-        <View style={styles.smartRow}>
-          {(() => {
-            const check = smartCheck(question, category, options, duration);
-            return SMART_LABELS.map(([key, label]) => (
-              <View key={key} style={[styles.smartChip, check[key] && styles.smartChipOn]}>
-                <Text style={[styles.smartChipText, check[key] && styles.smartChipTextOn]}>
-                  {key}
-                </Text>
-              </View>
-            ));
-          })()}
-          <Text style={styles.smartHint}>SMART decision check</Text>
-        </View>
 
         <View style={styles.rowBetween}>
           <Text style={styles.label}>Options ({options.length}/4)</Text>
@@ -203,12 +258,14 @@ export function NewSurv({
         </View>
         {options.map((opt) => (
           <View key={opt.id} style={styles.option}>
-            <View style={{ flex: 1 }}>
+            <Pressable style={{ flex: 1 }} onPress={() => editOption(opt)}>
               <Text style={styles.optionText}>{opt.label}</Text>
-              {opt.why ? <Text style={styles.optionWhy}>{sourceIcon(opt.source)} {opt.why}</Text> : null}
-            </View>
-            <Pressable onPress={() => setOptions((prev) => prev.filter((o) => o.id !== opt.id))}>
-              <Text style={styles.remove}>✕</Text>
+              <Text style={styles.optionWhy}>
+                {opt.why ? `${sourceIcon(opt.source)} ${opt.why} · ` : ''}tap to edit
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => rejectOption(opt)} hitSlop={8}>
+              <Ionicons name="refresh-circle" size={22} color={colors.inkFaint} />
             </Pressable>
           </View>
         ))}
@@ -318,19 +375,21 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   geoChip: { backgroundColor: colors.panelDeep, borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 5, marginTop: 10 },
   geoChipText: { color: colors.owlDeep, fontWeight: '700', fontSize: 11.5 },
-  smartRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 },
-  smartChip: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.panelDeep,
+  trendingWrap: { marginBottom: 12 },
+  trendingTitle: { color: colors.sage, fontWeight: '700', fontSize: 10.5, letterSpacing: 1, marginBottom: 7, paddingHorizontal: 2 },
+  trendingCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: colors.nightCard,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: 'rgba(78,201,180,0.22)',
+    padding: 11,
+    marginBottom: 7,
   },
-  smartChipOn: { backgroundColor: colors.good },
-  smartChipText: { color: colors.inkFaint, fontWeight: '900', fontSize: 11 },
-  smartChipTextOn: { color: colors.white },
-  smartHint: { color: colors.inkFaint, fontSize: 11, marginLeft: 4 },
+  trendingQ: { color: colors.white, fontWeight: '600', fontSize: 13.5 },
+  trendingMeta: { color: colors.star, fontSize: 11, marginTop: 2 },
   suggestBtn: { backgroundColor: colors.owlDeep, borderRadius: radius.chip, paddingHorizontal: 12, paddingVertical: 6, marginTop: 10 },
   suggestText: { color: colors.white, fontWeight: '700', fontSize: 12.5 },
   option: {
@@ -345,7 +404,6 @@ const styles = StyleSheet.create({
   },
   optionText: { color: colors.ink, fontWeight: '700', fontSize: 14 },
   optionWhy: { color: colors.inkSoft, fontSize: 12, marginTop: 2 },
-  remove: { color: colors.danger, fontWeight: '800', paddingHorizontal: 8, fontSize: 16 },
   manualRow: { flexDirection: 'row', gap: 6, marginTop: 2 },
   manualInput: {
     flex: 1,

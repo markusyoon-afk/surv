@@ -6,6 +6,7 @@ import { buildDrafts, categoryQuestion, timeContext } from './drafts';
 import { currentActivity, parseIcs, upcomingEvents } from './schedule';
 import { suggestConnections } from './connections';
 import { buildDigest } from './digest';
+import { TRENDING_SURVS } from './trending';
 import { smartCheck, smartScore } from './smart';
 import { applyOutcome, formatRemaining, getPairTrust, tally, voterWeight, winningOption } from './sage';
 import { detectCategory, suggestOptionsHeuristic, topInfluencer } from './suggest';
@@ -362,6 +363,36 @@ test('digest is quiet when nothing happened', () => {
   const items = buildDigest(me, users, nests, [], Date.now());
   // only the oracle line can appear with no activity
   assert.ok(items.length <= 1, `expected quiet digest, got ${items.map((i) => i.text).join(' | ')}`);
+});
+
+// ---- trending SURVs: SMART by construction (framing enforced here, not in UI) ----
+
+test('all top-5 trending SURVs are fully SMART', () => {
+  assert.equal(TRENDING_SURVS.length, 5);
+  for (const t of TRENDING_SURVS) {
+    const opts = t.options.map((label, i) => ({ id: `o${i}`, label, source: 'nest' as const }));
+    const check = smartCheck(t.question, t.category, opts, t.durationMs);
+    assert.equal(
+      smartScore(check),
+      5,
+      `"${t.question}" is not fully SMART: ${JSON.stringify(check)}`,
+    );
+  }
+});
+
+test('rejected labels never come back in suggestions', () => {
+  const first = suggestOptionsHeuristic('Where should we eat dinner tonight?', me, 3, { users, nests });
+  const rejectedLabel = first.options[0].label;
+  const second = suggestOptionsHeuristic('Where should we eat dinner tonight?', me, 3, {
+    users,
+    nests,
+    excludeLabels: [rejectedLabel],
+  });
+  assert.ok(
+    !second.options.some((o) => o.label === rejectedLabel),
+    `"${rejectedLabel}" should have been excluded`,
+  );
+  assert.ok(second.options.length > 0, 'replacements still generated');
 });
 
 console.log(`\nSAGE engine: ${passed} tests passed`);
