@@ -37,7 +37,7 @@ function Shell() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState<SurvDraft | null>(null);
-  const { me, survs, sweepExpired, liveTick, setMyName, addAcquaintance, importSurv, importVote, hydrated } = useSurv();
+  const { me, survs, sweepExpired, liveTick, setMyName, addAcquaintance, importSurv, importVote, hydrated, owlStyle } = useSurv();
   const dueForMe = survs.filter(
     (s) => s.askerId === me.id && (s.status === 'acted' || s.status === 'deciding'),
   ).length;
@@ -130,7 +130,7 @@ function Shell() {
         <View style={styles.frame}>
         <View style={styles.header}>
           <View style={styles.logoRow}>
-            <OwlAvatar clout={me.clout} size={42} />
+            <OwlAvatar clout={me.clout} size={42} styleCfg={owlStyle} />
             <View>
               <Text style={styles.logo}>SURV</Text>
               <Text style={styles.tagline}>Live it! SURV it!</Text>
@@ -197,7 +197,7 @@ function Shell() {
                   />
                 ) : key === 'profile' ? (
                   <View style={!active && styles.tabImgDim}>
-                    <OwlAvatar clout={me.clout} size={24} />
+                    <OwlAvatar clout={me.clout} size={24} styleCfg={owlStyle} />
                   </View>
                 ) : (
                   <Ionicons

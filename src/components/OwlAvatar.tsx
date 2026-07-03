@@ -30,19 +30,68 @@ export function nextStage(clout: number): AvatarStage | null {
   return AVATAR_STAGES.find((s) => s.minClout > clout) ?? null;
 }
 
+/** Customization catalog — accessories unlock as your SAGEmeter grows. */
+export const OWL_ACCESSORIES: Array<{ id: string; emoji: string; label: string; min: number }> = [
+  { id: 'none', emoji: '', label: 'Clean', min: 0 },
+  { id: 'sprout', emoji: '🌱', label: 'Sprout', min: 0 },
+  { id: 'scarf', emoji: '🧣', label: 'Scarf', min: 40 },
+  { id: 'shades', emoji: '🕶️', label: 'Shades', min: 60 },
+  { id: 'tophat', emoji: '🎩', label: 'Top hat', min: 75 },
+  { id: 'crown', emoji: '👑', label: 'Crown', min: 90 },
+];
+
+export const OWL_RINGS: Array<{ id: string; color: string; label: string; min: number }> = [
+  { id: 'none', color: 'transparent', label: 'None', min: 0 },
+  { id: 'sage', color: '#4ec9b4', label: 'Sage', min: 0 },
+  { id: 'sky', color: '#6b8fc9', label: 'Sky', min: 40 },
+  { id: 'gold', color: '#f2c14e', label: 'Gold', min: 60 },
+  { id: 'ember', color: '#c0392b', label: 'Ember', min: 75 },
+];
+
+export interface OwlStyleCfg {
+  ring?: string;
+  accessory?: string;
+}
+
 export function OwlAvatar({
   clout,
   size = 44,
   showLabel = false,
+  styleCfg,
 }: {
   clout: number;
   size?: number;
   showLabel?: boolean;
+  styleCfg?: OwlStyleCfg;
 }) {
   const stage = stageForClout(clout);
+  const ring = OWL_RINGS.find((r) => r.id === styleCfg?.ring && clout >= r.min);
+  const acc = OWL_ACCESSORIES.find((a) => a.id === styleCfg?.accessory && clout >= a.min);
   return (
     <View style={{ alignItems: 'center' }}>
-      <Image source={stage.img} style={{ width: size, height: size }} />
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: ring && ring.id !== 'none' ? Math.max(2, size / 20) : 0,
+          borderColor: ring?.color ?? 'transparent',
+        }}
+      >
+        <Image source={stage.img} style={{ width: '100%', height: '100%' }} />
+        {acc && acc.emoji !== '' && (
+          <Text
+            style={{
+              position: 'absolute',
+              top: -size * 0.18,
+              right: -size * 0.1,
+              fontSize: size * 0.42,
+            }}
+          >
+            {acc.emoji}
+          </Text>
+        )}
+      </View>
       {showLabel && <Text style={styles.label}>{stage.label}</Text>}
     </View>
   );

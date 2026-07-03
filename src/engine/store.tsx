@@ -41,6 +41,13 @@ interface PersistedState {
   arenaVotes?: Record<string, string>;
   arenaProcessed?: string[];
   healthConnected?: boolean;
+  perched?: string[];
+  owlStyle?: OwlStyle;
+}
+
+export interface OwlStyle {
+  ring?: string;
+  accessory?: string;
 }
 
 interface SurvStore {
@@ -90,6 +97,11 @@ interface SurvStore {
   addToNest: (nestId: string, userId: string, tier?: ClosenessTier) => void;
   /** Recruit an AI Sage from the Forest into one of your Nests. */
   addSageToNest: (sage: User, nestId: string) => void;
+  /** 🪶 Sages perched on your Tree weigh in on all your decisions. */
+  perched: string[];
+  perchSage: (sage: User) => void;
+  owlStyle: OwlStyle;
+  setOwlStyle: (style: OwlStyle) => void;
   cycleTier: (nestId: string, userId: string) => void;
   toggleConnector: (connector: User['connectors'][number]) => void;
   resetDemo: () => void;
@@ -143,6 +155,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
   const [arenaVotes, setArenaVotes] = useState<Record<string, string>>({});
   const [arenaProcessed, setArenaProcessed] = useState<string[]>([]);
   const [healthConnected, setHealthConnectedState] = useState(false);
+  const [perched, setPerched] = useState<string[]>([]);
+  const [owlStyle, setOwlStyleState] = useState<OwlStyle>({});
   const [hydrated, setHydrated] = useState(false);
   const skipNextSave = useRef(false);
 
@@ -213,6 +227,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             setArenaVotes(saved.arenaVotes ?? {});
             setArenaProcessed(saved.arenaProcessed ?? []);
             setHealthConnectedState(saved.healthConnected ?? false);
+            setPerched(saved.perched ?? []);
+            setOwlStyleState(saved.owlStyle ?? {});
           }
         }
       } catch {
@@ -260,9 +276,11 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       arenaVotes,
       arenaProcessed,
       healthConnected,
+      perched,
+      owlStyle,
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
-  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, healthConnected, hydrated]);
+  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, healthConnected, perched, owlStyle, hydrated]);
 
   const store = useMemo<SurvStore>(() => {
     const userById = (id: string) => users.find((u) => u.id === id);
@@ -337,12 +355,16 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
                 .flatMap((n) => [n.ownerId, ...n.members.map((m) => m.userId)]),
             );
             const nestSage = users.find(
-              (u) => u.isAI && memberIds.has(u.id) && !surv.votes.some((v) => v.userId === u.id),
+              (u) =>
+                u.isAI &&
+                (memberIds.has(u.id) || perched.includes(u.id)) &&
+                !surv.votes.some((v) => v.userId === u.id),
             );
             if (nestSage) {
               const name = engageAdvisor(surv.id, nestSage.id);
               if (name) {
-                news.push(`${name} — your nest sage — voted on “${surv.question.slice(0, 36)}…” 🦉`);
+                const role = perched.includes(nestSage.id) && !memberIds.has(nestSage.id) ? 'perched on your Tree' : 'your nest sage';
+                news.push(`🪶 ${name} — ${role} — voted on “${surv.question.slice(0, 36)}…”`);
                 continue;
               }
             }
@@ -557,6 +579,15 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
 
       sweepExpired: () => setSurvs((prev) => sweep(prev)),
 
+      perched,
+      owlStyle,
+      setOwlStyle: (style) => setOwlStyleState(style),
+
+      perchSage: (sage) => {
+        setUsers((prev) => (prev.some((u) => u.id === sage.id) ? prev : [...prev, sage]));
+        setPerched((prev) => (prev.includes(sage.id) ? prev : [...prev, sage.id]));
+      },
+
       addSageToNest: (sage, nestId) => {
         setUsers((prev) => (prev.some((u) => u.id === sage.id) ? prev : [...prev, sage]));
         setNests((prev) =>
@@ -636,9 +667,11 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         setArenaVotes({});
         setArenaProcessed([]);
         setHealthConnectedState(false);
+        setPerched([]);
+        setOwlStyleState({});
       },
     };
-  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, healthConnected, hydrated]);
+  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, healthConnected, perched, owlStyle, hydrated]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

@@ -14,7 +14,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { AVATAR_STAGES, nextStage, OwlAvatar, stageForClout } from '../components/OwlAvatar';
+import { AVATAR_STAGES, nextStage, OWL_ACCESSORIES, OWL_RINGS, OwlAvatar, stageForClout } from '../components/OwlAvatar';
 import { Image } from 'react-native';
 import { useSurv } from '../engine/store';
 import { CLAUDE_KEY_STORAGE } from '../engine/suggest';
@@ -31,7 +31,7 @@ const CONNECTORS: Array<[ConnectorId, string]> = [
 ];
 
 export function Profile() {
-  const { me, survs, toggleConnector, resetDemo } = useSurv();
+  const { me, survs, toggleConnector, resetDemo, owlStyle, setOwlStyle } = useSurv();
   const pending = survs.filter((s) => s.askerId === me.id && s.status === 'acted');
   const graded = survs.filter((s) => s.askerId === me.id && s.status === 'graded');
   const sageEntries = Object.entries(me.categorySage) as Array<[string, number]>;
@@ -43,7 +43,7 @@ export function Profile() {
     >
       <View style={styles.card}>
         <View style={styles.meRow}>
-          <OwlAvatar clout={me.clout} size={64} showLabel />
+          <OwlAvatar clout={me.clout} size={64} showLabel styleCfg={owlStyle} />
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>{me.name}</Text>
             <Text style={styles.bio}>{me.bio}</Text>
@@ -170,6 +170,48 @@ export function Profile() {
       </View>
 
       <SageAlgorithmCard />
+
+      <View style={styles.card}>
+        <Text style={styles.section}>Customize your owl</Text>
+        <Text style={styles.hint}>
+          The stage is earned and never changes — but your owl is yours. New gear
+          unlocks as your SAGEmeter grows.
+        </Text>
+        <Text style={styles.customLabel}>Ring</Text>
+        <View style={styles.connectors}>
+          {OWL_RINGS.map((r) => {
+            const locked = me.clout < r.min;
+            const on = (owlStyle.ring ?? 'none') === r.id;
+            return (
+              <Pressable
+                key={r.id}
+                style={[styles.swatch, { borderColor: r.color === 'transparent' ? colors.chip : r.color }, on && styles.swatchOn, locked && { opacity: 0.35 }]}
+                onPress={() => !locked && setOwlStyle({ ...owlStyle, ring: r.id })}
+              >
+                <Text style={styles.swatchText}>{locked ? `🔒 ${r.min}%` : r.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={styles.customLabel}>Accessory</Text>
+        <View style={styles.connectors}>
+          {OWL_ACCESSORIES.map((a) => {
+            const locked = me.clout < a.min;
+            const on = (owlStyle.accessory ?? 'none') === a.id;
+            return (
+              <Pressable
+                key={a.id}
+                style={[styles.swatch, on && styles.swatchOn, locked && { opacity: 0.35 }]}
+                onPress={() => !locked && setOwlStyle({ ...owlStyle, accessory: a.id })}
+              >
+                <Text style={styles.swatchText}>
+                  {locked ? `🔒 ${a.min}%` : `${a.emoji} ${a.label}`.trim()}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
 
       <ScheduleSettings />
 
@@ -503,6 +545,10 @@ const styles = StyleSheet.create({
   inviteBtnText: { color: colors.white, fontWeight: '800', fontSize: 12.5 },
   reset: { alignItems: 'center', paddingVertical: 10 },
   resetText: { color: colors.star, fontSize: 12.5, textDecorationLine: 'underline' },
+  customLabel: { color: colors.inkFaint, fontWeight: '700', fontSize: 11, marginTop: 8, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 },
+  swatch: { borderWidth: 2, borderColor: colors.chip, backgroundColor: colors.white, borderRadius: radius.chip, paddingHorizontal: 11, paddingVertical: 6 },
+  swatchOn: { backgroundColor: 'rgba(78,201,180,0.18)' },
+  swatchText: { color: colors.ink, fontWeight: '600', fontSize: 12 },
   routineChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
   routineChip: { backgroundColor: colors.panelDeep, borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 6 },
   routineChipText: { color: colors.inkSoft, fontWeight: '700', fontSize: 12 },

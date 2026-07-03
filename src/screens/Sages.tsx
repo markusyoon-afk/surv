@@ -31,7 +31,7 @@ function avatarInfluence(user: User): number {
 }
 
 export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
-  const { me, users, nests, survs, arenaVotes, voteArena, addSageToNest } = useSurv();
+  const { me, users, nests, survs, arenaVotes, voteArena, perched, perchSage } = useSurv();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [recruited, setRecruited] = useState<string | null>(null);
   const myNest = nests.find((n) => n.ownerId === me.id) ?? nests[0];
@@ -168,17 +168,20 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
                 </Text>
               </View>
               <Text style={styles.clout}>{Math.round(row.user.clout)}%</Text>
-              {row.user.isAI && myNest && !nests.some((n) => n.members.some((m) => m.userId === row.user.id)) && (
-                <Pressable
-                  style={styles.recruitBtn}
-                  onPress={() => {
-                    addSageToNest(row.user, myNest.id);
-                    setRecruited(`${row.user.name.split(' ')[0]} joined ${myNest.emoji} ${myNest.name} — they’ll weigh in on your Tree SURVs`);
-                  }}
-                >
-                  <Ionicons name="person-add" size={12} color={colors.white} />
-                </Pressable>
-              )}
+              {row.user.isAI &&
+                (perched.includes(row.user.id) ? (
+                  <Text style={styles.perchedMark}>🪶</Text>
+                ) : (
+                  <Pressable
+                    style={styles.recruitBtn}
+                    onPress={() => {
+                      perchSage(row.user);
+                      setRecruited(`🪶 ${row.user.name.split(' ')[0]} now perches on your Tree — they’ll weigh in on your decisions`);
+                    }}
+                  >
+                    <Text style={styles.perchBtnText}>🪶 Perch</Text>
+                  </Pressable>
+                ))}
             </View>
           );
         })}
@@ -224,7 +227,9 @@ const styles = StyleSheet.create({
   aiChipText: { color: colors.inkSoft, fontWeight: '800', fontSize: 9 },
   sageMeta: { color: colors.inkSoft, fontSize: 11.5, marginTop: 1 },
   clout: { color: colors.owlDeep, fontWeight: '800', fontSize: 13 },
-  recruitBtn: { backgroundColor: colors.owl, borderRadius: 12, padding: 6, marginLeft: 4 },
+  recruitBtn: { backgroundColor: colors.owl, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 5, marginLeft: 4 },
+  perchBtnText: { color: colors.white, fontWeight: '700', fontSize: 10.5 },
+  perchedMark: { fontSize: 14, marginLeft: 4 },
   recruitNote: { color: colors.good, fontWeight: '600', fontSize: 12, marginTop: 8 },
   meFooter: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   meFooterText: { color: colors.inkSoft, fontSize: 12, flex: 1, fontStyle: 'italic' },
