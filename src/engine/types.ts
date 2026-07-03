@@ -105,6 +105,7 @@ export interface Surv {
   actedOptionId?: string;
   /** Swipe verdict: right = good, left = bad. */
   outcome?: Outcome;
+  gradedAt?: number;
   comments?: SurvComment[];
 }
 

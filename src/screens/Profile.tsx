@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   PanResponder,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -130,6 +131,8 @@ export function Profile() {
 
       <ScheduleSettings />
 
+      <NudgeSettings />
+
       <ClaudeSettings />
 
       <Pressable style={styles.reset} onPress={resetDemo}>
@@ -188,6 +191,44 @@ function ScheduleSettings() {
         <Text style={styles.claudeSaveText}>Import calendar</Text>
       </Pressable>
       {note && <Text style={styles.hint}>{note}</Text>}
+    </View>
+  );
+}
+
+function NudgeSettings() {
+  const [status, setStatus] = useState<string>('default');
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && 'Notification' in window) {
+      setStatus(window.Notification.permission);
+    } else {
+      setStatus('unsupported');
+    }
+  }, []);
+
+  if (status === 'unsupported') return null;
+
+  const enable = () => {
+    window.Notification.requestPermission().then(setStatus).catch(() => {});
+  };
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.section}>Verdict nudges</Text>
+      {status === 'granted' ? (
+        <Text style={styles.hint}>
+          🔔 Nudges are on — SURV pings you the moment a decision needs your verdict.
+        </Text>
+      ) : (
+        <>
+          <Text style={styles.hint}>
+            Get pinged when a countdown ends and a decision is waiting on you.
+          </Text>
+          <Pressable style={styles.claudeRemove} onPress={enable}>
+            <Text style={styles.claudeRemoveText}>Enable nudges</Text>
+          </Pressable>
+        </>
+      )}
     </View>
   );
 }

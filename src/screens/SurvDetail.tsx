@@ -1,12 +1,13 @@
 // SURV detail overlay: full results (weighted + raw), voter weights, countdown,
 // and — for your own expired SURVs — the "Act on it" step.
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SageBar } from '../components/SurvCard';
 import { displayWeight, formatRemaining, msRemaining, tally, winningOption } from '../engine/sage';
 import { useSurv } from '../engine/store';
 import type { Surv } from '../engine/types';
+import { publishLive, subscribeLive, timeAgo } from '../lib/live';
 import { shareText, survShareUrl, voteBackUrl } from '../lib/share';
 import { colors, radius } from '../theme';
 
@@ -16,7 +17,32 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
   const { me, userById, castVote, actOn, addComment, extendSurv } = useSurv();
   const [comment, setComment] = useState('');
   const [shareNote, setShareNote] = useState<string | null>(null);
+  const [typingName, setTypingName] = useState<string | null>(null);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTypingSent = useRef(0);
+  const survId = surv?.id;
+
+  // Live presence: show who's writing in this Round Table right now.
+  useEffect(() => {
+    if (!survId) return;
+    return subscribeLive((msg) => {
+      if (msg.type !== 'typing' || msg.survId !== survId || msg.name === me.name) return;
+      setTypingName(msg.name);
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      typingTimer.current = setTimeout(() => setTypingName(null), 3000);
+    });
+  }, [survId, me.name]);
+
   if (!surv) return null;
+
+  const onCommentChange = (text: string) => {
+    setComment(text);
+    const now = Date.now();
+    if (text.trim() && now - lastTypingSent.current > 1500) {
+      lastTypingSent.current = now;
+      publishLive({ type: 'typing', survId: surv.id, name: me.name });
+    }
+  };
 
   const doShare = async (message: string) => {
     const result = await shareText(message);
@@ -163,9 +189,12 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
                 <View key={c.id} style={styles.commentRow}>
                   <Text style={{ fontSize: 18 }}>{author?.avatar}</Text>
                   <View style={styles.commentBubble}>
-                    <Text style={styles.commentAuthor}>
-                      {c.userId === me.id ? 'You' : author?.name}
-                    </Text>
+                    <View style={styles.commentHead}>
+                      <Text style={styles.commentAuthor}>
+                        {c.userId === me.id ? 'You' : author?.name}
+                      </Text>
+                      <Text style={styles.commentTime}>{timeAgo(c.at)}</Text>
+                    </View>
                     <Text style={styles.commentText}>{c.text}</Text>
                   </View>
                 </View>
@@ -174,13 +203,16 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
             {(surv.comments ?? []).length === 0 && (
               <Text style={styles.hint}>No talk yet — say why you’d choose what you chose.</Text>
             )}
+            {typingName && (
+              <Text style={styles.typing}>{typingName} is typing…</Text>
+            )}
             <View style={styles.commentInputRow}>
               <TextInput
                 style={styles.commentInput}
                 placeholder="Add to the Round Table…"
                 placeholderTextColor={colors.inkFaint}
                 value={comment}
-                onChangeText={setComment}
+                onChangeText={onCommentChange}
                 onSubmitEditing={() => {
                   addComment(surv.id, comment);
                   setComment('');
@@ -249,7 +281,10 @@ const styles = StyleSheet.create({
     borderColor: colors.chip,
     padding: 9,
   },
+  commentHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   commentAuthor: { color: colors.owlDeep, fontWeight: '800', fontSize: 12.5 },
+  commentTime: { color: colors.inkFaint, fontSize: 10.5 },
+  typing: { color: colors.inkSoft, fontSize: 12, fontStyle: 'italic', marginBottom: 5 },
   commentText: { color: colors.ink, fontSize: 13.5, marginTop: 2, lineHeight: 18 },
   commentInputRow: { flexDirection: 'row', gap: 7, marginTop: 4 },
   commentInput: {

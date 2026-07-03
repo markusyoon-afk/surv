@@ -5,6 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { fetchNearbyPlaces, GEO_CATEGORIES, getCurrentPosition, reverseCity, type NearbyPlace } from '../lib/geo';
+import { publishLive, subscribeLive } from '../lib/live';
 import { applyOutcome, voterWeight } from './sage';
 import { parseIcs, type CalEvent } from './schedule';
 import { ME, seedNests, seedSurvs, seedUsers } from './seed';
@@ -148,6 +149,26 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         setHydrated(true);
       }
     })();
+  }, []);
+
+  // Live layer: comments from other tabs/devices land in real time.
+  useEffect(() => {
+    return subscribeLive((msg) => {
+      if (msg.type !== 'comment') return;
+      setUsers((prevUsers) => {
+        // Remote author: an existing user when the name matches, else a guest.
+        const author =
+          prevUsers.find((u) => u.name === msg.authorName) ?? makeGuest(msg.authorName || 'Guest');
+        setSurvs((prev) =>
+          prev.map((s) => {
+            if (s.id !== msg.survId) return s;
+            if ((s.comments ?? []).some((c) => c.id === msg.comment.id)) return s;
+            return { ...s, comments: [...(s.comments ?? []), { ...msg.comment, userId: author.id }] };
+          }),
+        );
+        return prevUsers.some((u) => u.id === author.id) ? prevUsers : [...prevUsers, author];
+      });
+    });
   }, []);
 
   // Persist on every state change after hydration.
@@ -316,26 +337,22 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         applyOutcome({ ...surv }, outcome, copies);
         setUsers([...copies.values()]);
         setSurvs((prev) =>
-          prev.map((s) => (s.id === survId ? { ...s, status: 'graded', outcome } : s)),
+          prev.map((s) =>
+            s.id === survId ? { ...s, status: 'graded', outcome, gradedAt: Date.now() } : s,
+          ),
         );
       },
 
       addComment: (survId, text) => {
         const trimmed = text.trim();
         if (!trimmed) return;
+        const comment = { id: `c_${Date.now()}_${Math.floor(Math.random() * 1e4)}`, userId: ME, text: trimmed, at: Date.now() };
         setSurvs((prev) =>
           prev.map((s) =>
-            s.id === survId
-              ? {
-                  ...s,
-                  comments: [
-                    ...(s.comments ?? []),
-                    { id: `c_${Date.now()}`, userId: ME, text: trimmed, at: Date.now() },
-                  ],
-                }
-              : s,
+            s.id === survId ? { ...s, comments: [...(s.comments ?? []), comment] } : s,
           ),
         );
+        publishLive({ type: 'comment', survId, comment, authorName: me.name });
       },
 
       extendSurv: (survId, extraMs) => {

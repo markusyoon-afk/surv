@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { buildDrafts, categoryQuestion, timeContext } from './drafts';
 import { currentActivity, parseIcs, upcomingEvents } from './schedule';
 import { suggestConnections } from './connections';
+import { buildDigest } from './digest';
 import { smartCheck, smartScore } from './smart';
 import { applyOutcome, formatRemaining, getPairTrust, tally, voterWeight, winningOption } from './sage';
 import { detectCategory, suggestOptionsHeuristic, topInfluencer } from './suggest';
@@ -329,6 +330,38 @@ test('people you may know: platform overlap ranks first, nest members excluded',
       'sorted by overlap',
     );
   }
+});
+
+// ---- nest activity digest ----
+
+test('digest surfaces due decisions, fresh votes, and your oracle', () => {
+  const now = Date.now();
+  const digestSurvs: Surv[] = [
+    { ...mkSurv('Old choice A', now - 3 * 24 * 3600_000, 'Shopping'), status: 'acted', actedOptionId: 'a' },
+    {
+      ...mkSurv('Live one', now - 3600_000, 'Food'),
+      status: 'live',
+      votes: [{ userId: linda.id, optionId: 'a', weight: 0.7, votedAt: now - 1800_000 }],
+    },
+    {
+      ...mkSurv('Closed well', now - 5 * 24 * 3600_000, 'Food'),
+      status: 'graded',
+      outcome: 'good',
+      gradedAt: now - 2 * 24 * 3600_000,
+    },
+  ];
+  const items = buildDigest(me, users, nests, digestSurvs, now);
+  const all = items.map((i) => i.text).join(' | ');
+  assert.ok(all.includes('decision waiting on you'), `due missing: ${all}`);
+  assert.ok(all.includes('new vote') && all.includes('Linda'), `votes missing: ${all}`);
+  assert.ok(all.includes('closed 1 decision'), `graded missing: ${all}`);
+  assert.ok(all.includes('Linda is your top sage') || all.includes('top sage'), `oracle missing: ${all}`);
+});
+
+test('digest is quiet when nothing happened', () => {
+  const items = buildDigest(me, users, nests, [], Date.now());
+  // only the oracle line can appear with no activity
+  assert.ok(items.length <= 1, `expected quiet digest, got ${items.map((i) => i.text).join(' | ')}`);
 });
 
 console.log(`\nSAGE engine: ${passed} tests passed`);

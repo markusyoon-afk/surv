@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useState } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { NightSky } from './src/components/NightSky';
 import { Onboarding } from './src/components/Onboarding';
 import { OwlAvatar } from './src/components/OwlAvatar';
@@ -48,6 +48,30 @@ function Shell() {
     }, 30_000);
     return () => clearInterval(timer);
   }, [sweepExpired]);
+
+  // Verdict nudges: browser notification when something new needs your call.
+  const prevDue = useRef(dueForMe);
+  const [nudgeDismissed, setNudgeDismissed] = useState(false);
+  useEffect(() => {
+    if (dueForMe > prevDue.current) {
+      setNudgeDismissed(false);
+      if (
+        Platform.OS === 'web' &&
+        typeof window !== 'undefined' &&
+        'Notification' in window &&
+        window.Notification.permission === 'granted'
+      ) {
+        try {
+          new window.Notification('SURV 🦉', {
+            body: 'A decision is waiting on you — act on it and swipe the verdict.',
+          });
+        } catch {
+          // notification construction can throw on some platforms — nudge banner covers it
+        }
+      }
+    }
+    prevDue.current = dueForMe;
+  }, [dueForMe]);
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDED_KEY)
@@ -102,6 +126,21 @@ function Shell() {
           </View>
         </View>
 
+        {dueForMe > 0 && !nudgeDismissed && tab !== 'profile' && (
+          <View style={styles.nudge}>
+            <Ionicons name="notifications" size={15} color={colors.navy} />
+            <Pressable style={{ flex: 1 }} onPress={() => setTab('profile')}>
+              <Text style={styles.nudgeText}>
+                {dueForMe === 1 ? 'A decision needs' : `${dueForMe} decisions need`} your verdict —
+                your Nest wants to know how it went
+              </Text>
+            </Pressable>
+            <Pressable onPress={() => setNudgeDismissed(true)} hitSlop={10}>
+              <Ionicons name="close" size={15} color={colors.navy} />
+            </Pressable>
+          </View>
+        )}
+
         <View style={{ flex: 1 }}>
           {tab === 'home' && (
             <HomeFeed
@@ -110,6 +149,7 @@ function Shell() {
                 setDraft(d);
                 setTab('new');
               }}
+              onGoToProfile={() => setTab('profile')}
             />
           )}
           {tab === 'new' && (
@@ -241,4 +281,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
   },
   noticeText: { color: colors.white, fontWeight: '800', fontSize: 13.5, textAlign: 'center' },
+  nudge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.sage,
+    marginHorizontal: 14,
+    marginBottom: 8,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  nudgeText: { color: colors.navy, fontWeight: '700', fontSize: 12.5 },
 });
