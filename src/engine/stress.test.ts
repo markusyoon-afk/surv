@@ -3,7 +3,7 @@
 // Run: npm test  (both suites)
 
 import assert from 'node:assert/strict';
-import { activeArenaSurvs, arenaResult } from './arena';
+import { activeArenaSurvs, ARENA_BANK, arenaResult } from './arena';
 import { buildDrafts, categoryQuestion, eventDraftContent } from './drafts';
 import { avatarAt, makeAvatar, pickAdvisor, POPULATION_SIZE } from './population';
 import { applyArenaResult, applyOutcome, voterWeight } from './sage';
@@ -182,6 +182,26 @@ test('quality: arena outcomes always reference a real option', () => {
     assert.ok(result, `${id}: no result after expiry`);
     assert.ok(result!.actedIndex >= 0 && result!.actedIndex < result!.options.length, `${id}: bad acted index`);
   }
+});
+
+test('quality: the Forest never shows the same question twice', () => {
+  const base = 1_800_000_000_000;
+  for (let h = 0; h < 24; h += 2) {
+    const live = activeArenaSurvs(base + h * 3600_000);
+    const questions = live.map((s) => s.question);
+    assert.equal(new Set(questions).size, questions.length, `hour ${h}: duplicate questions on screen`);
+  }
+});
+
+test('quality: arena bank has an optimized mix across all 10 categories', () => {
+  assert.ok(ARENA_BANK.length >= 40, `bank too small: ${ARENA_BANK.length}`);
+  const byCat = new Map<string, number>();
+  for (const item of ARENA_BANK) byCat.set(item.category, (byCat.get(item.category) ?? 0) + 1);
+  for (const c of CATEGORIES) {
+    assert.ok((byCat.get(c) ?? 0) >= 3, `${c}: under-represented (${byCat.get(c) ?? 0})`);
+  }
+  assert.ok((byCat.get('Food') ?? 0) >= (byCat.get('Tech') ?? 0), 'high-engagement categories weighted heavier');
+  assert.equal(new Set(ARENA_BANK.map((b) => b.q)).size, ARENA_BANK.length, 'bank questions unique');
 });
 
 console.log(`\nStress/validation/quality: ${passed} tests passed`);

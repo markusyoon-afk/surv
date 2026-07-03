@@ -63,6 +63,20 @@ export const CATEGORY_ICONS: Record<Category, string> = {
   Relationships: 'heart',
 };
 
+/** Per-category accents — one family of cool hues, no two alike. */
+export const CATEGORY_COLORS: Record<Category, string> = {
+  Food: '#2f9e8f',
+  Shopping: '#3f8fb0',
+  Living: '#4ca36b',
+  Entertainment: '#6b8fc9',
+  Sports: '#38a3a5',
+  Tech: '#5a7fae',
+  Travel: '#4a9fae',
+  Style: '#5fae8f',
+  Work: '#39829e',
+  Relationships: '#59a0c2',
+};
+
 /** Ionicons name per connected platform. */
 export const PLATFORM_ICONS: Record<string, string> = {
   facebook: 'logo-facebook',
