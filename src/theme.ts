@@ -27,8 +27,18 @@ export const colors = {
   hairline: 'rgba(31,45,56,0.08)',
 };
 
+/**
+ * Type system: Space Grotesk carries the brand (wordmark, questions, section
+ * labels, CTAs); the system stack (SF Pro on iOS) carries body/UI for native
+ * feel — the pairing pattern of top-tier consumer apps.
+ */
+export const type = {
+  display: 'SpaceGrotesk_700Bold',
+  displayMedium: 'SpaceGrotesk_500Medium',
+};
+
 export const fonts = {
-  logo: { fontWeight: '800' as const, letterSpacing: 3 },
+  logo: { fontFamily: type.display, letterSpacing: 3 },
   title: { fontWeight: '700' as const },
   body: { fontWeight: '500' as const },
 };

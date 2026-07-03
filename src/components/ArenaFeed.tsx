@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 7 },
   badge: { backgroundColor: '#fdf3d8', borderRadius: radius.chip, paddingHorizontal: 9, paddingVertical: 3 },
   badgeText: { color: '#8a6d1a', fontWeight: '700', fontSize: 11 },
-  question: { color: colors.ink, fontSize: 15.5, fontWeight: '700', marginBottom: 9, lineHeight: 20 },
+  question: { color: colors.ink, fontSize: 15.5, fontFamily: 'SpaceGrotesk_500Medium', marginBottom: 9, lineHeight: 20 },
   voteBtn: {
     backgroundColor: colors.white,
     borderRadius: radius.button,

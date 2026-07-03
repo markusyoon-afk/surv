@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 420,
   },
-  logo: { color: colors.owlDeep, fontSize: 28, fontWeight: '900', textAlign: 'center', letterSpacing: 2 },
+  logo: { color: colors.owlDeep, fontSize: 27, fontFamily: 'SpaceGrotesk_700Bold', textAlign: 'center', letterSpacing: 2 },
   tagline: { color: colors.inkSoft, fontSize: 13, fontWeight: '700', textAlign: 'center', marginBottom: 8 },
   brand: { color: colors.inkSoft, fontSize: 12, textAlign: 'center', lineHeight: 17, marginBottom: 14, fontStyle: 'italic' },
   beat: { flexDirection: 'row', gap: 12, marginBottom: 16, alignItems: 'flex-start' },

@@ -184,7 +184,7 @@ export function Sages({ onOpen }: { onOpen: (surv: Surv) => void }) {
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.panel, borderRadius: radius.card, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: colors.hairline },
-  title: { color: colors.ink, fontWeight: '700', fontSize: 15.5, marginBottom: 4 },
+  title: { color: colors.ink, fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, marginBottom: 4 },
   sub: { color: colors.inkSoft, fontSize: 12, marginBottom: 8 },
   survRow: { flexDirection: 'row', gap: 10, paddingVertical: 7, alignItems: 'flex-start' },
   rank: { color: colors.inkFaint, fontWeight: '800', fontSize: 13, width: 18, textAlign: 'center', marginTop: 2 },

@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
   scopeTree: { backgroundColor: 'rgba(58,165,135,0.14)' },
   scopeForest: { backgroundColor: 'rgba(30,90,140,0.14)' },
   scopePillText: { fontSize: 10, fontWeight: '700', color: colors.inkSoft },
-  question: { color: colors.ink, fontSize: 16, fontWeight: '700', marginBottom: 10, lineHeight: 21 },
+  question: { color: colors.ink, fontSize: 16, fontFamily: 'SpaceGrotesk_500Medium', marginBottom: 10, lineHeight: 21 },
   barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 7, gap: 8 },
   barTrack: {
     flex: 1,

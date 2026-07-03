@@ -1,3 +1,4 @@
+import { SpaceGrotesk_500Medium, SpaceGrotesk_700Bold, useFonts } from '@expo-google-fonts/space-grotesk';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
@@ -232,6 +233,10 @@ function Shell() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({ SpaceGrotesk_500Medium, SpaceGrotesk_700Bold });
+  if (!fontsLoaded) {
+    return <View style={{ flex: 1, backgroundColor: colors.night }} />;
+  }
   return (
     <SurvProvider>
       <Shell />
@@ -258,8 +263,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: { color: colors.white, fontSize: 22, fontWeight: '800', letterSpacing: 3.5 },
-  tagline: { color: colors.sage, fontSize: 10, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' },
+  logo: { color: colors.white, fontSize: 23, fontFamily: 'SpaceGrotesk_700Bold', letterSpacing: 2.5 },
+  tagline: { color: colors.sage, fontSize: 9.5, fontFamily: 'SpaceGrotesk_500Medium', letterSpacing: 1.6, textTransform: 'uppercase' },
   meterMini: {
     width: 86,
     height: 24,

@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 7 },
-  title: { color: colors.sage, fontWeight: '700', fontSize: 10.5, letterSpacing: 1 },
+  title: { color: colors.sage, fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10.5, letterSpacing: 1.3 },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 4 },
   text: { color: colors.white, fontSize: 12.5, lineHeight: 17, flex: 1, fontWeight: '500' },
 });
