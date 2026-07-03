@@ -60,7 +60,7 @@ const TEMPLATES: DraftTemplate[] = [
   { slots: ['evening', 'night'], days: [5], question: 'Friday night — what’s the move?', category: 'Entertainment', reason: 'It’s Friday', durationMs: 3 * HOUR, base: 78 },
   { slots: ['night'], question: 'One more episode or call it a night?', category: 'Entertainment', reason: 'Wind-down', durationMs: HOUR, base: 46 },
   { slots: ['morning', 'midday'], weekend: true, question: 'What’s the move today?', category: 'Living', reason: 'Weekend plans', durationMs: 3 * HOUR, base: 66 },
-  { slots: ['evening'], days: [0], question: 'Meal prep — what’s the plan this week?', category: 'Food', reason: 'Sunday reset', durationMs: 12 * HOUR, base: 56 },
+  { slots: ['evening'], days: [0], question: 'Meal prep — what’s the plan this week?', category: 'Food', reason: 'Sunday reset', durationMs: 8 * HOUR, base: 56 },
 ];
 
 const norm = (q: string) => q.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
@@ -204,7 +204,7 @@ export function buildDrafts(
       question: content.question,
       category: content.category,
       reason: `📅 On your calendar ${when}`,
-      durationMs: Math.min(Math.max(event.start - nowMs - HOUR, HOUR), DAY),
+      durationMs: Math.min(Math.max(event.start - nowMs - HOUR, HOUR), 8 * HOUR),
       score: 95,
       options: content.options,
     });
@@ -252,7 +252,7 @@ export function buildDrafts(
       question: last.question,
       category: last.category,
       reason: `Your usual — you’ve SURV’d this ${count}×`,
-      durationMs: Math.min(Math.max(last.expiresAt - last.createdAt, HOUR), DAY),
+      durationMs: Math.min(Math.max(last.expiresAt - last.createdAt, HOUR), 8 * HOUR),
       score: 85 + count * 3,
     });
   }

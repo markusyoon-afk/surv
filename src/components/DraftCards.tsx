@@ -54,7 +54,7 @@ export function DraftCards({
       category: d.category,
       options,
       audience: myNestIds.length > 0 ? { kind: 'nests', nestIds: myNestIds } : { kind: 'public' },
-      durationMs: Math.min(d.durationMs, 24 * 3600_000),
+      durationMs: Math.min(d.durationMs, 3 * 3600_000), // Tree-optimal flight
     });
   };
 

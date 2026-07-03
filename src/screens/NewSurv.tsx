@@ -20,14 +20,18 @@ import { CATEGORIES, type Category, type SurvOption } from '../engine/types';
 import { CATEGORY_ICONS, CATEGORY_LABELS, colors, radius } from '../theme';
 
 const HOUR = 3600_000;
+// Daily decisions, not deep thought: 8 hrs is the ceiling.
+// Optimal defaults: Forest 1 hr (always-on crowd), Tree 3 hrs (one phone-check cycle).
 const DURATIONS: Array<[string, number]> = [
   ['⚡ ASAP', 5 * 60_000],
+  ['30 min', 30 * 60_000],
   ['1 hr', HOUR],
   ['3 hrs', 3 * HOUR],
-  ['6 hrs', 6 * HOUR],
-  ['12 hrs', 12 * HOUR],
-  ['24 hrs', 24 * HOUR],
+  ['8 hrs', 8 * HOUR],
 ];
+const FOREST_DEFAULT = HOUR;
+const TREE_DEFAULT = 3 * HOUR;
+const MAX_FLIGHT = 8 * HOUR;
 
 const MAX_Q = 140;
 
@@ -46,7 +50,7 @@ export function NewSurv({
   const [category, setCategory] = useState<Category>('Living');
   const [options, setOptions] = useState<SurvOption[]>([]);
   const [manual, setManual] = useState('');
-  const [duration, setDuration] = useState<number>(24 * HOUR);
+  const [duration, setDuration] = useState<number>(TREE_DEFAULT);
   const [isPublic, setIsPublic] = useState(false);
   const [nestIds, setNestIds] = useState<string[]>([nests[0]?.id].filter(Boolean));
   const [busy, setBusy] = useState(false);
@@ -150,7 +154,7 @@ export function NewSurv({
   const applyDraft = (draft: SurvDraft) => {
     setQuestion(draft.question);
     setCategory(draft.category);
-    setDuration(Math.min(Math.max(draft.durationMs, 5 * 60_000), 24 * HOUR));
+    setDuration(Math.min(Math.max(draft.durationMs, 5 * 60_000), MAX_FLIGHT));
     if (draft.options && draft.options.length > 0) {
       // Event-specific decisions come with their options pre-baked.
       setOptions(
@@ -312,12 +316,23 @@ export function NewSurv({
 
         <Text style={styles.label}>Your Nest, Tree, or Forest</Text>
         <View style={styles.chips}>
-          <Chip label="🌲 The Forest" on={isPublic} onPress={() => setIsPublic(!isPublic)} />
+          <Chip
+            label="🌲 The Forest"
+            on={isPublic}
+            onPress={() => {
+              const next = !isPublic;
+              setIsPublic(next);
+              setDuration(next ? FOREST_DEFAULT : TREE_DEFAULT); // optimal per audience
+            }}
+          />
           {!isPublic && (
             <Chip
               label="🌳 My Tree"
               on={nestIds.length === myNests.length && myNests.length > 0}
-              onPress={() => setNestIds(myNests.map((n) => n.id))}
+              onPress={() => {
+                setNestIds(myNests.map((n) => n.id));
+                setDuration(TREE_DEFAULT);
+              }}
             />
           )}
           {!isPublic &&
@@ -356,7 +371,7 @@ function sourceIcon(source: SurvOption['source']): string {
 }
 
 const SLIDER_MIN = 5 * 60_000; // ⚡ ASAP
-const SLIDER_MAX = 24 * HOUR;
+const SLIDER_MAX = 8 * HOUR;
 
 function durationLabel(ms: number): string {
   if (ms <= 6 * 60_000) return '⚡ ASAP (5 min)';
@@ -406,7 +421,7 @@ function DurationSlider({ valueMs, onChange }: { valueMs: number; onChange: (ms:
       <View style={[styles.sliderThumb, { left: `${pct * 100}%` }]} />
       <View style={styles.sliderEnds}>
         <Text style={styles.sliderEndText}>⚡ ASAP</Text>
-        <Text style={styles.sliderEndText}>24 hrs</Text>
+        <Text style={styles.sliderEndText}>8 hrs</Text>
       </View>
     </View>
   );

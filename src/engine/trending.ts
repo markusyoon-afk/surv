@@ -32,7 +32,7 @@ export const TRENDING_SURVS: TrendingSurv[] = [
     question: 'What should we watch this weekend?',
     category: 'Entertainment',
     options: ['That new thriller series', 'Comedy rewatch', 'Movie marathon night'],
-    durationMs: 24 * HOUR,
+    durationMs: 8 * HOUR,
     reuses: 356,
   },
   {
@@ -40,7 +40,7 @@ export const TRENDING_SURVS: TrendingSurv[] = [
     question: 'Should I buy it now or wait for a sale this week?',
     category: 'Shopping',
     options: ['Buy it now', 'Wait for the sale', 'Skip it entirely'],
-    durationMs: 24 * HOUR,
+    durationMs: 8 * HOUR,
     reuses: 298,
   },
   {
@@ -48,7 +48,7 @@ export const TRENDING_SURVS: TrendingSurv[] = [
     question: 'Morning workout or evening session tomorrow?',
     category: 'Sports',
     options: ['6am club', 'After work', 'Active rest day'],
-    durationMs: 12 * HOUR,
+    durationMs: 6 * HOUR,
     reuses: 245,
   },
   {
@@ -56,7 +56,7 @@ export const TRENDING_SURVS: TrendingSurv[] = [
     question: 'Catch up with friends this weekend — night in or night out?',
     category: 'Relationships',
     options: ['Night in — board games', 'Night out', 'In Friday, out Saturday'],
-    durationMs: 24 * HOUR,
+    durationMs: 8 * HOUR,
     reuses: 231,
   },
 ];

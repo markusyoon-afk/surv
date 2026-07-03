@@ -70,7 +70,8 @@ function makeArenaSurv(bucket: number, slot: number): ArenaSurv | null {
   const rand = mulberry32(seed);
   const item = BANK[Math.floor(rand() * BANK.length)];
   const createdAt = bucket * BUCKET + Math.floor(rand() * BUCKET);
-  const lifetime = (2 + rand() * 4) * HOUR;
+  // Optimal Forest flights: 30 min to 4 hrs — urgency keeps votes-per-minute high.
+  const lifetime = (0.5 + rand() * 3.5) * HOUR;
   // Stars headline occasionally; the rest of the 100k take the other slots.
   const asker =
     rand() < 0.04
@@ -146,11 +147,11 @@ export function arenaStats(now = Date.now()): {
 } {
   const bucket = Math.floor(now / BUCKET);
   const rand = mulberry32(bucket);
-  // ~1,002/hr entering × ~4h average lifetime ≈ ~4,000 live at any moment.
+  // ~1,002/hr entering × ~2.25h average lifetime ≈ ~2,250 live at any moment.
   return {
     activeSages: POPULATION_SIZE + STAR_AVATARS.length,
     newThisHour: NEW_PER_HOUR,
-    liveNow: 3800 + Math.floor(rand() * 500),
+    liveNow: 2100 + Math.floor(rand() * 350),
     votesLastHour: 21_000 + Math.floor(rand() * 6000),
   };
 }

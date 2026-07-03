@@ -105,8 +105,8 @@ export function SurvDetail({ surv, onClose }: { surv: Surv | null; onClose: () =
             )}
 
             {isMine && live && (
-              <Pressable style={styles.extendBtn} onPress={() => extendSurv(surv.id, 24 * HOUR)}>
-                <Text style={styles.extendText}>🪽 Extend the flight +24 hrs</Text>
+              <Pressable style={styles.extendBtn} onPress={() => extendSurv(surv.id, 2 * HOUR)}>
+                <Text style={styles.extendText}>🪽 Extend the flight +2 hrs</Text>
               </Pressable>
             )}
 
