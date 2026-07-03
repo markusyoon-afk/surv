@@ -5,6 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { applyOutcome, voterWeight } from './sage';
+import { parseIcs, type CalEvent } from './schedule';
 import { ME, seedNests, seedSurvs, seedUsers } from './seed';
 import type {
   Audience,
@@ -23,6 +24,7 @@ interface PersistedState {
   users: User[];
   nests: Nest[];
   survs: Surv[];
+  calendarEvents?: CalEvent[];
 }
 
 interface SurvStore {
@@ -30,8 +32,11 @@ interface SurvStore {
   users: User[];
   nests: Nest[];
   survs: Surv[];
+  calendarEvents: CalEvent[];
   hydrated: boolean;
   userById: (id: string) => User | undefined;
+  /** Paste .ics text (Google Calendar / iCal export) → events feed the drafts engine. */
+  importCalendar: (icsText: string) => number;
   setMyName: (name: string) => void;
   importSurv: (packet: { surv: Omit<Surv, 'votes' | 'comments'>; askerName: string }) => Surv | null;
   importVote: (packet: { survId: string; optionId: string; voterName: string }) => boolean;
@@ -96,6 +101,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<User[]>(seedUsers);
   const [nests, setNests] = useState<Nest[]>(seedNests);
   const [survs, setSurvs] = useState<Surv[]>(() => sweep(seedSurvs()));
+  const [calendarEvents, setCalendarEvents] = useState<CalEvent[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const skipNextSave = useRef(false);
 
@@ -111,6 +117,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             setUsers(saved.users);
             setNests(saved.nests);
             setSurvs(sweep(saved.survs));
+            setCalendarEvents(saved.calendarEvents ?? []);
           }
         }
       } catch {
@@ -128,9 +135,9 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       skipNextSave.current = false;
       return;
     }
-    const state: PersistedState = { users, nests, survs };
+    const state: PersistedState = { users, nests, survs, calendarEvents };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
-  }, [users, nests, survs, hydrated]);
+  }, [users, nests, survs, calendarEvents, hydrated]);
 
   const store = useMemo<SurvStore>(() => {
     const userById = (id: string) => users.find((u) => u.id === id);
@@ -141,8 +148,21 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       users,
       nests,
       survs,
+      calendarEvents,
       hydrated,
       userById,
+
+      importCalendar: (icsText) => {
+        const parsed = parseIcs(icsText);
+        if (parsed.length === 0) return 0;
+        setCalendarEvents((prev) => {
+          const known = new Set(prev.map((e) => e.id));
+          return [...prev, ...parsed.filter((e) => !known.has(e.id))].sort(
+            (a, b) => a.start - b.start,
+          );
+        });
+        return parsed.length;
+      },
 
       setMyName: (name) => {
         const trimmed = name.trim();
@@ -334,9 +354,10 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         setUsers(seedUsers());
         setNests(seedNests());
         setSurvs(sweep(seedSurvs()));
+        setCalendarEvents([]);
       },
     };
-  }, [users, nests, survs, hydrated]);
+  }, [users, nests, survs, calendarEvents, hydrated]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

@@ -3,6 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { buildDrafts, timeContext } from './drafts';
+import { currentActivity, parseIcs, upcomingEvents } from './schedule';
 import { applyOutcome, formatRemaining, getPairTrust, tally, voterWeight, winningOption } from './sage';
 import { detectCategory, suggestOptionsHeuristic, topInfluencer } from './suggest';
 import { seedNests, seedUsers } from './seed';
@@ -201,6 +202,54 @@ test('your strongest sage gets named attribution on the top pick', () => {
   assert.equal(inf?.user.id, linda.id); // Food sage 81, shares the Foodies nest
   const { options } = suggestOptionsHeuristic('Where should we eat dinner?', me, 3, { users, nests });
   assert.ok(options[0].why?.includes('Linda'), `expected attribution, got: ${options[0].why}`);
+});
+
+// ---- schedule + calendar integration ----
+
+test('the general-public routine knows what you are doing', () => {
+  assert.equal(currentActivity(new Date(2026, 6, 1, 12, 30)), 'eat'); // Wed lunch
+  assert.equal(currentActivity(new Date(2026, 6, 1, 10, 0)), 'work'); // Wed morning
+  assert.equal(currentActivity(new Date(2026, 6, 1, 17, 30)), 'exercise'); // Wed 5:30pm (M/W/F)
+  assert.equal(currentActivity(new Date(2026, 6, 1, 2, 0)), 'sleep');
+  assert.equal(currentActivity(new Date(2026, 6, 4, 15, 0)), 'play'); // Sat afternoon
+});
+
+test('routine activity boosts matching draft categories', () => {
+  const wedLunch = new Date(2026, 6, 1, 12, 15);
+  const drafts = buildDrafts([], me, wedLunch);
+  const lunch = drafts.find((d) => d.question.includes('lunch'));
+  assert.ok(lunch && lunch.score >= 92, `eat window should boost Food drafts, got ${lunch?.score}`);
+});
+
+const SAMPLE_ICS = [
+  'BEGIN:VCALENDAR',
+  'BEGIN:VEVENT',
+  'SUMMARY:Dinner with Sarah',
+  'DTSTART:20260703T190000',
+  'END:VEVENT',
+  'BEGIN:VEVENT',
+  'SUMMARY:Quarterly review',
+  'DTSTART;TZID=America/Chicago:20260710T100000',
+  'END:VEVENT',
+  'END:VCALENDAR',
+].join('\r\n');
+
+test('ics parsing extracts events from Google Calendar exports', () => {
+  const events = parseIcs(SAMPLE_ICS);
+  assert.equal(events.length, 2);
+  assert.equal(events[0].title, 'Dinner with Sarah');
+  assert.equal(new Date(events[0].start).getHours(), 19);
+});
+
+test('upcoming calendar events become high-priority drafts', () => {
+  const now = new Date(2026, 6, 2, 12, 15); // Thu noon; dinner event is Fri 7pm
+  const events = parseIcs(SAMPLE_ICS);
+  assert.equal(upcomingEvents(events, now.getTime()).length, 1); // review is outside 72h
+  const drafts = buildDrafts([], me, now, 4, events);
+  const eventDraft = drafts.find((d) => d.question.includes('Dinner with Sarah'));
+  assert.ok(eventDraft, 'calendar event should surface as a draft');
+  assert.ok(eventDraft!.reason.includes('📅'));
+  assert.equal(eventDraft!.category, 'Food'); // "Dinner" → Food
 });
 
 console.log(`\nSAGE engine: ${passed} tests passed`);

@@ -13,6 +13,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { nextStage, OwlAvatar, stageForClout } from '../components/OwlAvatar';
 import { useSurv } from '../engine/store';
 import { CLAUDE_KEY_STORAGE } from '../engine/suggest';
 import type { ConnectorId, Outcome } from '../engine/types';
@@ -36,7 +37,7 @@ export function Profile() {
     <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 100 }}>
       <View style={styles.card}>
         <View style={styles.meRow}>
-          <Text style={{ fontSize: 44 }}>{me.avatar}</Text>
+          <OwlAvatar clout={me.clout} size={64} showLabel />
           <View style={{ flex: 1 }}>
             <Text style={styles.name}>{me.name}</Text>
             <Text style={styles.bio}>{me.bio}</Text>
@@ -47,6 +48,14 @@ export function Profile() {
           <View style={[styles.meterFill, { width: `${me.clout}%` }]} />
           <Text style={styles.meterText}>{Math.round(me.clout)}%</Text>
         </View>
+        <Text style={styles.evolution}>
+          {(() => {
+            const next = nextStage(me.clout);
+            return next
+              ? `You’re a ${stageForClout(me.clout).label} — evolve into ${next.label} at ${next.minClout}%`
+              : '🦸 Super Sage Owl — maximum evolution reached';
+          })()}
+        </Text>
         {sageEntries.length > 0 && (
           <>
             <Text style={styles.section}>Category SAGE</Text>
@@ -119,12 +128,67 @@ export function Profile() {
         </View>
       </View>
 
+      <ScheduleSettings />
+
       <ClaudeSettings />
 
       <Pressable style={styles.reset} onPress={resetDemo}>
         <Text style={styles.resetText}>Reset demo data</Text>
       </Pressable>
     </ScrollView>
+  );
+}
+
+function ScheduleSettings() {
+  const { calendarEvents, importCalendar } = useSurv();
+  const [ics, setIcs] = useState('');
+  const [note, setNote] = useState<string | null>(null);
+  const upcoming = calendarEvents.filter((e) => e.start > Date.now()).length;
+
+  const doImport = () => {
+    const count = importCalendar(ics);
+    setNote(
+      count > 0
+        ? `Imported ${count} event${count === 1 ? '' : 's'} — they’ll appear as Quick SURV drafts.`
+        : 'No events found — paste the full contents of a .ics file.',
+    );
+    if (count > 0) setIcs('');
+  };
+
+  return (
+    <View style={styles.card}>
+      <Text style={styles.section}>Schedule & Calendar</Text>
+      <Text style={styles.hint}>
+        SURV runs on the everyday rhythm — work, play, eat, sleep, exercise — and drafts
+        your routine decisions at the right moment:
+      </Text>
+      <View style={styles.routineChips}>
+        {['💼 Work 9–5 weekdays', '🍽️ Meals 7a · 12p · 6p', '🏋️ Exercise M/W/F 5p', '🎮 Play evenings + weekends', '😴 Sleep 11p–7a'].map(
+          (r) => (
+            <View key={r} style={styles.routineChip}>
+              <Text style={styles.routineChipText}>{r}</Text>
+            </View>
+          ),
+        )}
+      </View>
+      <Text style={styles.hint}>
+        Add your real calendar: in Google Calendar use Settings → Export (or any app’s
+        .ics export), open the file, and paste its contents here. Upcoming events become
+        one-tap decision drafts. {upcoming > 0 ? `Currently tracking ${upcoming} upcoming event${upcoming === 1 ? '' : 's'}.` : ''}
+      </Text>
+      <TextInput
+        style={styles.icsInput}
+        placeholder="Paste .ics calendar contents here…"
+        placeholderTextColor={colors.inkFaint}
+        value={ics}
+        onChangeText={setIcs}
+        multiline
+      />
+      <Pressable style={[styles.claudeSave, { alignSelf: 'flex-start', paddingVertical: 8 }]} onPress={doImport}>
+        <Text style={styles.claudeSaveText}>Import calendar</Text>
+      </Pressable>
+      {note && <Text style={styles.hint}>{note}</Text>}
+    </View>
   );
 }
 
@@ -251,6 +315,7 @@ const styles = StyleSheet.create({
   meterTrack: { height: 34, backgroundColor: colors.panelDeep, borderRadius: 10, overflow: 'hidden', justifyContent: 'center' },
   meterFill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: colors.owl, borderRadius: 10 },
   meterText: { color: colors.ink, fontWeight: '900', fontSize: 15, paddingHorizontal: 12 },
+  evolution: { color: colors.inkSoft, fontSize: 12.5, fontStyle: 'italic', marginTop: 6 },
   sageRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   sageLabel: { color: colors.ink, fontWeight: '700', fontSize: 12.5, width: 100 },
   sageTrack: { flex: 1, height: 10, backgroundColor: colors.panelDeep, borderRadius: 5, overflow: 'hidden' },
@@ -283,6 +348,21 @@ const styles = StyleSheet.create({
   connectorTextOn: { color: colors.white },
   reset: { alignItems: 'center', paddingVertical: 10 },
   resetText: { color: colors.star, fontSize: 12.5, textDecorationLine: 'underline' },
+  routineChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
+  routineChip: { backgroundColor: colors.panelDeep, borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 6 },
+  routineChipText: { color: colors.inkSoft, fontWeight: '700', fontSize: 12 },
+  icsInput: {
+    backgroundColor: colors.white,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: colors.chip,
+    padding: 10,
+    color: colors.ink,
+    minHeight: 70,
+    marginBottom: 8,
+    fontSize: 12,
+    textAlignVertical: 'top',
+  },
   claudeRow: { flexDirection: 'row', gap: 7 },
   claudeInput: {
     flex: 1,

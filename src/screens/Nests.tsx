@@ -3,6 +3,7 @@
 
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { NestFrame } from '../components/NestFrame';
 import { useSurv } from '../engine/store';
 import type { Category } from '../engine/types';
 import { colors, radius } from '../theme';
@@ -16,22 +17,31 @@ export function Nests() {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState(NEST_EMOJI[0]);
   const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const mine = nests.filter(
     (n) => n.ownerId === me.id || n.members.some((m) => m.userId === me.id),
   );
 
   const submit = () => {
-    if (!name.trim() || memberIds.length === 0) return;
+    if (!name.trim()) {
+      setError('Give your Nest a name first.');
+      return;
+    }
+    // Solo nests are fine — friends join later via shared SURVs.
     createNest(name, emoji, memberIds);
     setName('');
     setEmoji(NEST_EMOJI[0]);
     setMemberIds([]);
+    setError(null);
     setCreating(false);
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 100 }}>
+    <ScrollView
+      contentContainerStyle={{ padding: 14, paddingBottom: 100 }}
+      keyboardShouldPersistTaps="handled"
+    >
       <Pressable style={styles.newBtn} onPress={() => setCreating(!creating)}>
         <Text style={styles.newBtnText}>{creating ? '✕ Cancel' : '＋ New Nest'}</Text>
       </Pressable>
@@ -56,7 +66,7 @@ export function Nests() {
               </Pressable>
             ))}
           </View>
-          <Text style={styles.label}>Who’s in it</Text>
+          <Text style={styles.label}>Who’s in it (optional — friends join via shared SURVs)</Text>
           <View style={styles.memberChips}>
             {users
               .filter((u) => u.id !== me.id)
@@ -80,18 +90,20 @@ export function Nests() {
               })}
           </View>
           <Pressable
-            style={[styles.createBtn, (!name.trim() || memberIds.length === 0) && { opacity: 0.45 }]}
+            style={[styles.createBtn, !name.trim() && { opacity: 0.55 }]}
             onPress={submit}
           >
             <Text style={styles.createBtnText}>Create Nest</Text>
           </Pressable>
+          {error && <Text style={styles.error}>{error}</Text>}
         </View>
       )}
 
-      {mine.map((nest) => {
+      {mine.map((nest, idx) => {
         const iOwn = nest.ownerId === me.id;
         return (
-          <View key={nest.id} style={styles.card}>
+          <NestFrame key={nest.id} seed={idx + nest.id.length * 13}>
+            <View style={[styles.card, styles.cardInFrame]}>
             <Text style={styles.name}>
               {nest.emoji} {nest.name}
               {iOwn ? '  · yours' : ''}
@@ -127,7 +139,8 @@ export function Nests() {
                 </View>
               );
             })}
-          </View>
+            </View>
+          </NestFrame>
         );
       })}
       <Text style={styles.hint}>
@@ -149,6 +162,8 @@ function topSage(
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.panel, borderRadius: radius.card, padding: 14, marginBottom: 12 },
+  cardInFrame: { borderRadius: 0, marginBottom: 0 },
+  error: { color: colors.danger, fontWeight: '700', fontSize: 12.5, marginTop: 8, textAlign: 'center' },
   newBtn: {
     backgroundColor: colors.owl,
     borderRadius: radius.card,

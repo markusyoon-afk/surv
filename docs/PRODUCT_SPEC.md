@@ -114,7 +114,27 @@ No backend yet: the full engine runs on-device against seed data (real questions
    right/left on decisions you acted on; connected sources (FB/IG/Discord/Yelp/Google —
    mock toggles in v1).
 
-## 4. Roadmap after v1
+## 4. Mission & the data flywheel
+
+**The mission: a wiser world — connect people so their experience impacts each
+other's lives.** Every SURV is someone borrowing the judgment of the people who've
+earned their trust; every verdict makes that judgment measurably better.
+
+The data this generates is unlike anything a poll or review site has:
+- **Decision graphs**: what people actually chose (not just clicked), in which
+  category, on whose advice, and whether it turned out well
+- **Influence maps**: who genuinely sways whom, per category — earned influencers,
+  not follower counts
+- **Lifestyle rhythms**: routine + calendar-aware decision moments (work / play /
+  eat / sleep / exercise) tied to real purchasing choices
+
+Long-term this powers ethical commercial products — decision-intent marketing
+("people deciding on dinner within 2 miles right now"), earned-influencer discovery,
+and category trend signals — under hard rules: aggregate and anonymized only,
+opt-in, users own their data, and the asker's Nest never becomes ad inventory
+without explicit consent. Wiser world first; the data value follows from trust.
+
+## 5. Roadmap after v1
 1. **Backend:** Supabase or Firebase (auth, Postgres, realtime votes, push). Schema mirrors `src/engine/types.ts`.
 2. **Real connectors:** OAuth to Google (Places/Reviews), Yelp Fusion, Discord bot, Meta
    Graph API (FB/IG) — read-only signals feeding option generation and Nest discovery.

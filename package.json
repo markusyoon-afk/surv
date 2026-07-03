@@ -24,7 +24,8 @@
     "web": "expo start --web",
     "test": "tsx src/engine/sage.test.ts",
     "typecheck": "tsc --noEmit",
-    "build:web": "expo export --platform web && node scripts/post-export.js"
+    "build:web": "expo export --platform web && node scripts/post-export.js",
+    "deploy:pages": "node scripts/deploy-pages.js"
   },
   "private": true
 }

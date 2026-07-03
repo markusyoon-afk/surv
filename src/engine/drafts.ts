@@ -2,6 +2,8 @@
 // wind-down) pre-drafted for the current moment, ranked by the user's own
 // posting habits. Pure functions — fully unit-testable.
 
+import { currentActivity, upcomingEvents, whenLabel, type Activity, type CalEvent } from './schedule';
+import { detectCategory } from './suggest';
 import type { Category, Surv, User } from './types';
 
 export interface SurvDraft {
@@ -61,6 +63,15 @@ const TEMPLATES: DraftTemplate[] = [
 
 const norm = (q: string) => q.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
 
+/** What the general-public routine says you're doing → the decision category it feeds. */
+const ACTIVITY_CATEGORY: Record<Activity, Category | null> = {
+  eat: 'Food',
+  exercise: 'Sports',
+  play: 'Entertainment',
+  work: 'Work',
+  sleep: null,
+};
+
 /**
  * Ranked drafts for right now: schedule templates boosted by the user's own
  * category habits, plus their genuinely recurring SURVs resurfaced as
@@ -71,6 +82,7 @@ export function buildDrafts(
   _me: User,
   now: Date = new Date(),
   limit = 4,
+  events: CalEvent[] = [],
 ): SurvDraft[] {
   const { slot, weekend, day } = timeContext(now);
   const nowMs = now.getTime();
@@ -84,19 +96,40 @@ export function buildDrafts(
 
   const drafts: SurvDraft[] = [];
 
+  // The routine layer: what the general-public schedule says you're doing right now.
+  const activityCategory = (() => {
+    const activity = currentActivity(now);
+    return activity ? ACTIVITY_CATEGORY[activity] : null;
+  })();
+
   for (const t of TEMPLATES) {
     if (!t.slots.includes(slot)) continue;
     if (t.weekend !== undefined && t.weekend !== weekend) continue;
     if (t.days && !t.days.includes(day)) continue;
     if (recentNorm.has(norm(t.question))) continue;
     const habitBoost = Math.min(catCount.get(t.category) ?? 0, 5) * 5;
+    const routineBoost = t.category === activityCategory ? 12 : 0;
     drafts.push({
       id: `d_${norm(t.question).replace(/ /g, '_').slice(0, 48)}`,
       question: t.question,
       category: t.category,
       reason: t.reason,
       durationMs: t.durationMs,
-      score: t.base + habitBoost,
+      score: t.base + habitBoost + routineBoost,
+    });
+  }
+
+  // The calendar layer: real upcoming events become decision drafts.
+  for (const event of upcomingEvents(events, nowMs)) {
+    const question = `${event.title} ${whenLabel(event.start, nowMs)} — what’s the plan?`;
+    if (recentNorm.has(norm(question))) continue;
+    drafts.push({
+      id: `d_cal_${event.id.replace(/[^a-z0-9]/gi, '_').slice(0, 40)}`,
+      question,
+      category: detectCategory(event.title),
+      reason: `📅 On your calendar ${whenLabel(event.start, nowMs)}`,
+      durationMs: Math.min(Math.max(event.start - nowMs - HOUR, HOUR), DAY),
+      score: 95,
     });
   }
 

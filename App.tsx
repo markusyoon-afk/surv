@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { NightSky } from './src/components/NightSky';
 import { Onboarding } from './src/components/Onboarding';
+import { OwlAvatar } from './src/components/OwlAvatar';
 import type { SurvDraft } from './src/engine/drafts';
 import { clearShareHash, parseShareHash } from './src/lib/share';
 import { SurvProvider, useSurv } from './src/engine/store';
@@ -88,9 +89,7 @@ function Shell() {
       <SafeAreaView style={styles.safe}>
         <View style={styles.header}>
           <View style={styles.logoRow}>
-            <View style={styles.owlBadge}>
-              <Text style={{ fontSize: 22 }}>🦉</Text>
-            </View>
+            <OwlAvatar clout={me.clout} size={42} />
             <View>
               <Text style={styles.logo}>SURV</Text>
               <Text style={styles.tagline}>Live it! SURV it!</Text>

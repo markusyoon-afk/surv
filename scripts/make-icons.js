@@ -80,6 +80,7 @@ function fillCircle(buf, size, cx, cy, radius, color) {
         buf[i] = r;
         buf[i + 1] = g;
         buf[i + 2] = b;
+        buf[i + 3] = 255;
       }
     }
   }
@@ -105,7 +106,27 @@ function fillTriangle(buf, size, p1, p2, p3, color) {
         buf[i] = r;
         buf[i + 1] = g;
         buf[i + 2] = b;
+        buf[i + 3] = 255;
       }
+    }
+  }
+}
+
+function makeTransparentCanvas(size) {
+  return Buffer.alloc(size * size * 4); // all zeros = fully transparent
+}
+
+function fillRect(buf, size, x, y, w, h, color) {
+  const [r, g, b] = hex(color);
+  const x1 = Math.min(size - 1, Math.ceil(x + w));
+  const y1 = Math.min(size - 1, Math.ceil(y + h));
+  for (let yy = Math.max(0, Math.floor(y)); yy <= y1; yy++) {
+    for (let xx = Math.max(0, Math.floor(x)); xx <= x1; xx++) {
+      const i = (yy * size + xx) * 4;
+      buf[i] = r;
+      buf[i + 1] = g;
+      buf[i + 2] = b;
+      buf[i + 3] = 255;
     }
   }
 }
@@ -165,10 +186,98 @@ function drawIcon(size) {
   return encodePng(size, size, buf);
 }
 
+// ---------- SAGEmeter avatar evolution (128px, transparent, circular) ----------
+// 1 Hatchling → 2 Owl → 3 Sage (cap) → 4 Masked Sage → 5 Super Sage (mask + cape)
+
+const GOLD = '#f2c14e';
+const CAPE = '#c0392b';
+const MASK = '#0f5e63';
+
+function drawAvatar(stage) {
+  const S = 128;
+  const buf = makeTransparentCanvas(S);
+
+  // backdrop disc (gold ring at max stage)
+  if (stage >= 5) {
+    fillCircle(buf, S, 64, 64, 62, GOLD);
+    fillCircle(buf, S, 64, 64, 57, NIGHT);
+  } else {
+    fillCircle(buf, S, 64, 64, 60, NIGHT);
+  }
+
+  // cape flares out behind the body
+  if (stage >= 5) {
+    fillTriangle(buf, S, [38, 56], [64, 64], [22, 116], CAPE);
+    fillTriangle(buf, S, [90, 56], [64, 64], [106, 116], CAPE);
+    fillTriangle(buf, S, [38, 56], [90, 56], [64, 122], CAPE);
+  }
+
+  const body = stage === 1 ? '#7cccae' : OWL;
+  const bodyR = stage === 1 ? 30 : 38;
+  const bodyY = stage === 1 ? 82 : 78;
+
+  // ear tufts from stage 2 up
+  if (stage >= 2) {
+    fillTriangle(buf, S, [34, 56], [46, 40], [52, 60], body);
+    fillTriangle(buf, S, [94, 56], [82, 40], [76, 60], body);
+  }
+
+  fillCircle(buf, S, 64, bodyY, bodyR, body);
+  if (stage >= 2) fillCircle(buf, S, 64, bodyY + 22, bodyR * 0.55, OWL_DEEP);
+
+  // eyes (drawn over mask when masked)
+  if (stage >= 4) {
+    fillRect(buf, S, 28, 56, 72, 22, MASK);
+    fillTriangle(buf, S, [28, 56], [40, 56], [22, 44], MASK);
+    fillTriangle(buf, S, [100, 56], [88, 56], [106, 44], MASK);
+    fillCircle(buf, S, 48, 67, 10, CREAM);
+    fillCircle(buf, S, 80, 67, 10, CREAM);
+    fillCircle(buf, S, 48, 67, 5, INK);
+    fillCircle(buf, S, 80, 67, 5, INK);
+  } else {
+    const eyeR = stage === 1 ? 15 : 14;
+    fillCircle(buf, S, 48, 68, eyeR, CREAM);
+    fillCircle(buf, S, 80, 68, eyeR, CREAM);
+    fillCircle(buf, S, 48, 68, 6, INK);
+    fillCircle(buf, S, 80, 68, 6, INK);
+  }
+
+  // beak
+  fillTriangle(buf, S, [64, 82], [56, 94], [72, 94], BEAK);
+
+  // graduation cap for the Sage
+  if (stage === 3) {
+    fillTriangle(buf, S, [64, 24], [98, 40], [64, 54], INK);
+    fillTriangle(buf, S, [64, 24], [30, 40], [64, 54], INK);
+    fillRect(buf, S, 90, 40, 3, 16, GOLD);
+    fillCircle(buf, S, 92, 58, 4, GOLD);
+  }
+
+  // super emblem
+  if (stage >= 5) fillCircle(buf, S, 64, 96, 8, GOLD);
+
+  // hatchling egg cup
+  if (stage === 1) {
+    fillCircle(buf, S, 64, 122, 34, CREAM);
+    fillTriangle(buf, S, [40, 104], [52, 104], [46, 92], CREAM);
+    fillTriangle(buf, S, [76, 104], [88, 104], [82, 92], CREAM);
+  }
+
+  return encodePng(S, S, buf);
+}
+
 const outDir = path.join(__dirname, '..', 'web-assets');
 fs.mkdirSync(outDir, { recursive: true });
 for (const size of [512, 180]) {
   const file = path.join(outDir, `icon-${size}.png`);
   fs.writeFileSync(file, drawIcon(size));
+  console.log(`wrote ${file}`);
+}
+
+const avatarDir = path.join(__dirname, '..', 'assets', 'avatars');
+fs.mkdirSync(avatarDir, { recursive: true });
+for (let stage = 1; stage <= 5; stage++) {
+  const file = path.join(avatarDir, `stage${stage}.png`);
+  fs.writeFileSync(file, drawAvatar(stage));
   console.log(`wrote ${file}`);
 }
