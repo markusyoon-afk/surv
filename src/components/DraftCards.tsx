@@ -13,10 +13,18 @@ export function DraftCards({
   horizontal?: boolean;
   onSelect: (draft: SurvDraft) => void;
 }) {
-  const { me, survs, calendarEvents } = useSurv();
+  const { me, survs, calendarEvents, healthConnected } = useSurv();
   const drafts = useMemo(
-    () => buildDrafts(survs.filter((s) => s.askerId === me.id), me, new Date(), 4, calendarEvents),
-    [survs, me, calendarEvents],
+    () =>
+      buildDrafts(
+        survs.filter((s) => s.askerId === me.id),
+        me,
+        new Date(),
+        4,
+        calendarEvents,
+        healthConnected,
+      ),
+    [survs, me, calendarEvents, healthConnected],
   );
   if (drafts.length === 0) return null;
 

@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { NightSky } from './src/components/NightSky';
 import { Onboarding } from './src/components/Onboarding';
 import { OwlAvatar } from './src/components/OwlAvatar';
@@ -180,11 +180,27 @@ function Shell() {
             const active = tab === key;
             return (
               <Pressable key={key} style={styles.tab} onPress={() => setTab(key)}>
-                <Ionicons
-                  name={active ? icon : (`${icon}-outline` as keyof typeof Ionicons.glyphMap)}
-                  size={key === 'new' ? 26 : 22}
-                  color={active ? colors.sage : colors.star}
-                />
+                {key === 'home' ? (
+                  <Image
+                    source={require('./assets/icons/tree.png')}
+                    style={[styles.tabImg, !active && styles.tabImgDim]}
+                  />
+                ) : key === 'nests' ? (
+                  <Image
+                    source={require('./assets/icons/nest.png')}
+                    style={[styles.tabImg, !active && styles.tabImgDim]}
+                  />
+                ) : key === 'profile' ? (
+                  <View style={!active && styles.tabImgDim}>
+                    <OwlAvatar clout={me.clout} size={24} />
+                  </View>
+                ) : (
+                  <Ionicons
+                    name={active ? icon : (`${icon}-outline` as keyof typeof Ionicons.glyphMap)}
+                    size={key === 'new' ? 26 : 22}
+                    color={active ? colors.sage : colors.star}
+                  />
+                )}
                 <Text style={[styles.tabLabel, active && styles.tabLabelOn]}>{label}</Text>
                 {key === 'profile' && dueForMe > 0 && (
                   <View style={styles.badge}>
@@ -264,6 +280,8 @@ const styles = StyleSheet.create({
     borderTopColor: colors.nightCard,
   },
   tab: { flex: 1, alignItems: 'center', gap: 3 },
+  tabImg: { width: 24, height: 24 },
+  tabImgDim: { opacity: 0.5 },
   tabLabel: { color: colors.star, fontSize: 10, fontWeight: '600', letterSpacing: 0.2 },
   tabLabelOn: { color: colors.sage, fontWeight: '700' },
   badge: {

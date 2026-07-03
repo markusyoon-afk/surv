@@ -36,7 +36,10 @@ export function Profile() {
   const sageEntries = Object.entries(me.categorySage) as Array<[string, number]>;
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 100 }}>
+    <ScrollView
+      contentContainerStyle={{ padding: 14, paddingBottom: 100 }}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.card}>
         <View style={styles.meRow}>
           <OwlAvatar clout={me.clout} size={64} showLabel />
@@ -130,9 +133,11 @@ export function Profile() {
       )}
 
       <View style={styles.card}>
-        <Text style={styles.section}>Connected sources</Text>
+        <Text style={styles.section}>Integrations — your life’s ecosystem</Text>
         <Text style={styles.hint}>
-          Sources feed option suggestions and Nest signals. (Live OAuth lands with the backend.)
+          Every connection makes decisions smarter. Tap to connect — “yes” turns the
+          signal on. (Live OAuth per service lands with the backend; calendar and
+          location are real today, health is simulated until the device APIs connect.)
         </Text>
         <View style={styles.connectors}>
           {CONNECTORS.map(([id, label]) => {
@@ -149,8 +154,11 @@ export function Profile() {
               </Pressable>
             );
           })}
+          <HealthToggle />
         </View>
       </View>
+
+      <SageAlgorithmCard />
 
       <ScheduleSettings />
 
@@ -214,6 +222,54 @@ function ScheduleSettings() {
         <Text style={styles.claudeSaveText}>Import calendar</Text>
       </Pressable>
       {note && <Text style={styles.hint}>{note}</Text>}
+    </View>
+  );
+}
+
+function HealthToggle() {
+  const { healthConnected, setHealthConnected } = useSurv();
+  return (
+    <Pressable
+      style={[styles.connector, healthConnected && styles.connectorOn]}
+      onPress={() => setHealthConnected(!healthConnected)}
+    >
+      <Text style={[styles.connectorText, healthConnected && styles.connectorTextOn]}>
+        ❤️ Health (Apple/Google) {healthConnected ? '✓' : ''}
+      </Text>
+    </Pressable>
+  );
+}
+
+function SageAlgorithmCard() {
+  const [open, setOpen] = useState(false);
+  return (
+    <View style={styles.card}>
+      <Pressable style={styles.algoHeader} onPress={() => setOpen(!open)}>
+        <Text style={styles.section}>How the SAGEmeter works</Text>
+        <Text style={styles.algoToggle}>{open ? 'hide' : 'show'}</Text>
+      </Pressable>
+      {open && (
+        <>
+          <Text style={styles.algoFormula}>
+            vote weight = 0.35·Clout + 0.35·CategorySAGE + 0.20·Closeness + 0.10·PairTrust
+          </Text>
+          <Text style={styles.hint}>
+            Clout and CategorySAGE are 0–100 (you start at 30). Closeness: inner circle
+            1.0 · regular 0.75 · outer 0.5 · public 0.3. PairTrust is 0–1 per person,
+            starts 0.5.
+          </Text>
+          <Text style={styles.algoRow}>Verdict 👍 and you backed the acted option → CategorySAGE +4·(100−current)/70, Clout +1, trust +0.08</Text>
+          <Text style={styles.algoRow}>Verdict 👍 but you opposed → CategorySAGE −1, trust −0.04</Text>
+          <Text style={styles.algoRow}>Verdict 👎 and you backed it → CategorySAGE −3, Clout −1, trust −0.08</Text>
+          <Text style={styles.algoRow}>Verdict 👎 but you warned against it → CategorySAGE +2, Clout +1, trust +0.08</Text>
+          <Text style={styles.algoRow}>Arena: good call backed → +3·(100−current)/70 SAGE, +1 Clout · wrong call → −2 SAGE, −1 Clout</Text>
+          <Text style={styles.algoRow}>Closing your own loop (grading) → +1 Clout — the flywheel reward</Text>
+          <Text style={styles.hint}>
+            Gains shrink as you climb (the (100−current)/70 factor), so a Super Sage is
+            earned through a long record of good calls — full math in docs/SAGE-ALGORITHM.md.
+          </Text>
+        </>
+      )}
     </View>
   );
 }
@@ -456,4 +512,16 @@ const styles = StyleSheet.create({
   claudeSaveText: { color: colors.white, fontWeight: '800', fontSize: 13 },
   claudeRemove: { alignSelf: 'flex-start', backgroundColor: colors.panelDeep, borderRadius: radius.button, paddingHorizontal: 12, paddingVertical: 7 },
   claudeRemoveText: { color: colors.inkSoft, fontWeight: '700', fontSize: 12.5 },
+  algoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  algoToggle: { color: colors.owlDeep, fontWeight: '700', fontSize: 12 },
+  algoFormula: {
+    color: colors.ink,
+    fontWeight: '700',
+    fontSize: 12.5,
+    backgroundColor: colors.panelDeep,
+    borderRadius: 8,
+    padding: 9,
+    marginBottom: 8,
+  },
+  algoRow: { color: colors.inkSoft, fontSize: 12, marginBottom: 5, lineHeight: 16 },
 });

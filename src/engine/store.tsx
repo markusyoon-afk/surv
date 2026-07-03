@@ -40,6 +40,7 @@ interface PersistedState {
   nearbyPlaces?: Partial<Record<Category, NearbyPlace[]>>;
   arenaVotes?: Record<string, string>;
   arenaProcessed?: string[];
+  healthConnected?: boolean;
 }
 
 interface SurvStore {
@@ -52,6 +53,8 @@ interface SurvStore {
   nearbyPlaces: Partial<Record<Category, NearbyPlace[]>>;
   /** My votes in the public arena, survId → optionId. */
   arenaVotes: Record<string, string>;
+  healthConnected: boolean;
+  setHealthConnected: (on: boolean) => void;
   voteArena: (survId: string, optionId: string) => void;
   /**
    * Heartbeat work: settle ended arena SURVs I voted on (self-training) and
@@ -134,6 +137,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
   const [nearbyPlaces, setNearbyPlaces] = useState<Partial<Record<Category, NearbyPlace[]>>>({});
   const [arenaVotes, setArenaVotes] = useState<Record<string, string>>({});
   const [arenaProcessed, setArenaProcessed] = useState<string[]>([]);
+  const [healthConnected, setHealthConnectedState] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const skipNextSave = useRef(false);
 
@@ -157,6 +161,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             setNearbyPlaces(saved.nearbyPlaces ?? {});
             setArenaVotes(saved.arenaVotes ?? {});
             setArenaProcessed(saved.arenaProcessed ?? []);
+            setHealthConnectedState(saved.healthConnected ?? false);
           }
         }
       } catch {
@@ -203,9 +208,10 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       nearbyPlaces,
       arenaVotes,
       arenaProcessed,
+      healthConnected,
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
-  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, hydrated]);
+  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, healthConnected, hydrated]);
 
   const store = useMemo<SurvStore>(() => {
     const userById = (id: string) => users.find((u) => u.id === id);
@@ -223,6 +229,8 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       userById,
 
       arenaVotes,
+      healthConnected,
+      setHealthConnected: (on) => setHealthConnectedState(on),
 
       voteArena: (survId, optionId) => {
         setArenaVotes((prev) => (prev[survId] ? prev : { ...prev, [survId]: optionId }));
@@ -532,9 +540,10 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         setNearbyPlaces({});
         setArenaVotes({});
         setArenaProcessed([]);
+        setHealthConnectedState(false);
       },
     };
-  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, hydrated]);
+  }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, healthConnected, hydrated]);
 
   return <Ctx.Provider value={store}>{children}</Ctx.Provider>;
 }

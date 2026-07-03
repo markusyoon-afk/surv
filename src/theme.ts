@@ -5,9 +5,9 @@
 import type { Category } from './engine/types';
 
 export const colors = {
-  nightTop: '#0e2136',
-  night: '#132b44',
-  nightCard: '#1c3a58',
+  nightTop: '#0a1826',
+  night: '#0f2438',
+  nightCard: '#1a3450',
   panel: '#f7f9fa',
   panelDeep: '#e8edef',
   ink: '#1f2d38',

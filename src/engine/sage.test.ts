@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { activeArenaSurvs, arenaResult, arenaStats } from './arena';
-import { buildDrafts, categoryQuestion, timeContext } from './drafts';
+import { buildDrafts, categoryQuestion, eventDraftContent, timeContext } from './drafts';
 import { adviseOption, advisorRationale, getPopulation, makeAvatar, pickAdvisor, POPULATION_SIZE } from './population';
 import { currentActivity, parseIcs, upcomingEvents } from './schedule';
 import { suggestConnections } from './connections';
@@ -454,6 +454,34 @@ test('helping strangers decide well trains YOUR sage', () => {
   assert.equal(you.clout, cloutBefore + 1);
   applyArenaResult(you, 'Food', true, 'bad');
   assert.ok(you.clout <= cloutBefore + 1, 'backing a bad call costs clout');
+});
+
+// ---- life-ecosystem proactive drafts ----
+
+test('event type decides the question: housewarming asks what to bring', () => {
+  const hw = eventDraftContent('Housewarming at the Kims', 'Saturday');
+  assert.ok(hw.question.includes('what should I bring'), hw.question);
+  assert.equal(hw.category, 'Shopping');
+  assert.ok(hw.options && hw.options.some((o) => o.includes('wine')));
+
+  const workout = eventDraftContent('Morning workout', 'tomorrow');
+  assert.ok(workout.question.includes('focus'), workout.question);
+  assert.equal(workout.category, 'Sports');
+
+  const interview = eventDraftContent('Final interview — Acme', 'tomorrow');
+  assert.ok(interview.question.includes('prep'), interview.question);
+  assert.equal(interview.category, 'Work');
+
+  const generic = eventDraftContent('Quarterly sync', 'today');
+  assert.ok(generic.question.includes('plan'), 'unknown events fall back to the plan question');
+});
+
+test('health signals surface drafts only when connected', () => {
+  const wedNoon = new Date(2026, 6, 1, 12, 15);
+  const off = buildDrafts([], me, wedNoon, 6, [], false);
+  const on = buildDrafts([], me, wedNoon, 6, [], true);
+  assert.ok(!off.some((d) => d.reason.includes('health')), 'no health drafts while disconnected');
+  assert.ok(on.some((d) => d.reason.includes('health')), 'health draft appears when connected');
 });
 
 console.log(`\nSAGE engine: ${passed} tests passed`);

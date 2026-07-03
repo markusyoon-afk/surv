@@ -274,6 +274,54 @@ for (const size of [512, 180]) {
   console.log(`wrote ${file}`);
 }
 
+// ---------- brand tab icons (96px, transparent) ----------
+
+function drawTreeIcon() {
+  const S = 96;
+  const buf = makeTransparentCanvas(S);
+  // trunk
+  fillRect(buf, S, 42, 52, 12, 34, '#8a6b4a');
+  fillTriangle(buf, S, [42, 60], [30, 84], [42, 84], '#8a6b4a');
+  // layered foliage
+  fillCircle(buf, S, 30, 44, 20, OWL_DEEP);
+  fillCircle(buf, S, 66, 44, 20, OWL_DEEP);
+  fillCircle(buf, S, 48, 28, 24, OWL);
+  fillCircle(buf, S, 48, 48, 26, OWL);
+  return encodePng(S, S, buf);
+}
+
+function drawNestIcon() {
+  const S = 96;
+  const buf = makeTransparentCanvas(S);
+  // eggs peeking over the rim
+  fillCircle(buf, S, 36, 42, 13, CREAM);
+  fillCircle(buf, S, 60, 42, 13, CREAM);
+  fillCircle(buf, S, 48, 36, 13, '#f4e8d0');
+  // woven bowl: brown disc with the top carved open
+  fillCircle(buf, S, 48, 62, 34, '#8a6b4a');
+  for (let y = 0; y < 46; y++) {
+    for (let x = 0; x < S; x++) {
+      const dx = x - 48;
+      const dy = y - 62;
+      if (dx * dx + dy * dy <= 34 * 34 && y < 48 && !(Math.hypot(x - 36, y - 42) <= 13 || Math.hypot(x - 60, y - 42) <= 13 || Math.hypot(x - 48, y - 36) <= 13)) {
+        const i = (y * S + x) * 4;
+        buf[i + 3] = 0;
+      }
+    }
+  }
+  // straw rim + twig ticks
+  fillRect(buf, S, 16, 48, 64, 7, '#d8b98a');
+  fillTriangle(buf, S, [12, 52], [26, 44], [26, 54], '#b08d64');
+  fillTriangle(buf, S, [84, 52], [70, 44], [70, 54], '#b08d64');
+  return encodePng(S, S, buf);
+}
+
+const iconDir = path.join(__dirname, '..', 'assets', 'icons');
+fs.mkdirSync(iconDir, { recursive: true });
+fs.writeFileSync(path.join(iconDir, 'tree.png'), drawTreeIcon());
+fs.writeFileSync(path.join(iconDir, 'nest.png'), drawNestIcon());
+console.log('wrote tab icons: tree.png, nest.png');
+
 const avatarDir = path.join(__dirname, '..', 'assets', 'avatars');
 fs.mkdirSync(avatarDir, { recursive: true });
 for (let stage = 1; stage <= 5; stage++) {

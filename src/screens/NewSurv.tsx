@@ -1,9 +1,10 @@
 // +SURV — post a decision. Question → AI-suggested options → duration → audience → SURVit!
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -143,14 +144,25 @@ export function NewSurv({
     }
   };
 
-  /** One tap: prefill the routine decision and load its top-3 options. */
+  /** One tap: prefill the routine decision and load its options. */
   const applyDraft = (draft: SurvDraft) => {
     setQuestion(draft.question);
     setCategory(draft.category);
-    const preset = DURATIONS.find(([, ms]) => ms >= draft.durationMs);
-    setDuration(preset ? preset[1] : DURATIONS[0][1]);
-    setOptions([]);
-    suggestFor(draft.question);
+    setDuration(Math.min(Math.max(draft.durationMs, 5 * 60_000), 7 * 24 * HOUR));
+    if (draft.options && draft.options.length > 0) {
+      // Event-specific decisions come with their options pre-baked.
+      setOptions(
+        draft.options.map((label, i) => ({
+          id: `opt_ev_${Date.now()}_${i}`,
+          label,
+          source: 'ai',
+          why: draft.reason,
+        })),
+      );
+    } else {
+      setOptions([]);
+      suggestFor(draft.question, draft.category);
+    }
   };
 
   useEffect(() => {
@@ -285,7 +297,8 @@ export function NewSurv({
           </View>
         )}
 
-        <Text style={styles.label}>Countdown</Text>
+        <Text style={styles.label}>Countdown — {durationLabel(duration)}</Text>
+        <DurationSlider valueMs={duration} onChange={setDuration} />
         <View style={styles.chips}>
           {DURATIONS.map(([label, ms]) => (
             <Chip key={label} label={label} on={duration === ms} onPress={() => setDuration(ms)} />
@@ -328,6 +341,63 @@ function sourceIcon(source: SurvOption['source']): string {
     case 'places': return '📍';
     default: return '';
   }
+}
+
+const SLIDER_MIN = 5 * 60_000; // ⚡ ASAP
+const SLIDER_MAX = 24 * HOUR;
+
+function durationLabel(ms: number): string {
+  if (ms <= 6 * 60_000) return '⚡ ASAP (5 min)';
+  if (ms < HOUR) return `${Math.round(ms / 60_000)} min`;
+  if (ms <= 24 * HOUR) {
+    const hrs = Math.floor(ms / HOUR);
+    const mins = Math.round((ms % HOUR) / 60_000);
+    return mins > 0 ? `${hrs} hrs ${mins} min` : `${hrs} hr${hrs === 1 ? '' : 's'}`;
+  }
+  return `${Math.round(ms / (24 * HOUR))} days`;
+}
+
+/** Drag anywhere from immediate-ASAP to 24 hrs. Presets cover longer runs. */
+function DurationSlider({ valueMs, onChange }: { valueMs: number; onChange: (ms: number) => void }) {
+  const widthRef = useRef(1);
+  const pct = Math.min(1, Math.max(0, (valueMs - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)));
+
+  const update = (x: number) => {
+    const p = Math.min(1, Math.max(0, x / widthRef.current));
+    let ms = SLIDER_MIN + p * (SLIDER_MAX - SLIDER_MIN);
+    // snap: 5-min steps under an hour, 30-min steps beyond
+    const step = ms < HOUR ? 5 * 60_000 : 30 * 60_000;
+    ms = Math.round(ms / step) * step;
+    onChange(Math.min(SLIDER_MAX, Math.max(SLIDER_MIN, ms)));
+  };
+
+  const responder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e) => update(e.nativeEvent.locationX),
+      onPanResponderMove: (e) => update(e.nativeEvent.locationX),
+    }),
+  ).current;
+
+  return (
+    <View
+      style={styles.sliderTrackWrap}
+      onLayout={(e) => {
+        widthRef.current = Math.max(1, e.nativeEvent.layout.width);
+      }}
+      {...responder.panHandlers}
+    >
+      <View style={styles.sliderTrack}>
+        <View style={[styles.sliderFill, { width: `${pct * 100}%` }]} />
+      </View>
+      <View style={[styles.sliderThumb, { left: `${pct * 100}%` }]} />
+      <View style={styles.sliderEnds}>
+        <Text style={styles.sliderEndText}>⚡ ASAP</Text>
+        <Text style={styles.sliderEndText}>24 hrs</Text>
+      </View>
+    </View>
+  );
 }
 
 function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
@@ -390,6 +460,26 @@ const styles = StyleSheet.create({
   },
   trendingQ: { color: colors.white, fontWeight: '600', fontSize: 13.5 },
   trendingMeta: { color: colors.star, fontSize: 11, marginTop: 2 },
+  sliderTrackWrap: { paddingVertical: 10, marginBottom: 6, justifyContent: 'center' },
+  sliderTrack: { height: 6, borderRadius: 3, backgroundColor: colors.panelDeep, overflow: 'hidden' },
+  sliderFill: { height: '100%', backgroundColor: colors.sage, borderRadius: 3 },
+  sliderThumb: {
+    position: 'absolute',
+    top: 1,
+    marginLeft: -11,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.owl,
+    borderWidth: 3,
+    borderColor: colors.white,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  sliderEnds: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  sliderEndText: { color: colors.inkFaint, fontSize: 10.5, fontWeight: '600' },
   suggestBtn: { backgroundColor: colors.owlDeep, borderRadius: radius.chip, paddingHorizontal: 12, paddingVertical: 6, marginTop: 10 },
   suggestText: { color: colors.white, fontWeight: '700', fontSize: 12.5 },
   option: {

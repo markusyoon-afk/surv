@@ -14,6 +14,8 @@ export interface SurvDraft {
   reason: string;
   durationMs: number;
   score: number;
+  /** Pre-baked options for event-specific decisions (skip auto-suggest). */
+  options?: string[];
 }
 
 const HOUR = 3600_000;
@@ -63,6 +65,78 @@ const TEMPLATES: DraftTemplate[] = [
 
 const norm = (q: string) => q.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
 
+/**
+ * Event-aware proactive decisions: the TYPE of calendar event decides the
+ * question. A housewarming asks what to bring; a workout asks for the focus.
+ */
+interface EventRule {
+  match: RegExp;
+  category: Category;
+  question: (title: string, when: string) => string;
+  options: string[];
+}
+
+const EVENT_RULES: EventRule[] = [
+  {
+    match: /housewarming|house party|potluck/i,
+    category: 'Shopping',
+    question: (t, w) => `${t} ${w} — what should I bring?`,
+    options: ['A nice bottle of wine', 'A plant they’ll keep', 'Dessert to share'],
+  },
+  {
+    match: /birthday|bday/i,
+    category: 'Shopping',
+    question: (t, w) => `${t} ${w} — what’s the gift?`,
+    options: ['Something personal', 'An experience gift', 'Gift card + card'],
+  },
+  {
+    match: /workout|gym|training|run\b|lift/i,
+    category: 'Sports',
+    question: (t, w) => `${t} ${w} — what’s the focus?`,
+    options: ['Upper body push', 'Legs + core', 'Cardio intervals'],
+  },
+  {
+    match: /interview|presentation|pitch|review\b/i,
+    category: 'Work',
+    question: (t, w) => `${t} ${w} — how do I prep?`,
+    options: ['Deep prep the night before', 'Mock run with a friend', 'Notes + good sleep'],
+  },
+  {
+    match: /flight|trip|travel|vacation/i,
+    category: 'Travel',
+    question: (t, w) => `${t} ${w} — pack how?`,
+    options: ['Carry-on only', 'Check a bag, pack tonight', 'Pack morning-of, live dangerously'],
+  },
+  {
+    match: /date\b|anniversary/i,
+    category: 'Relationships',
+    question: (t, w) => `${t} ${w} — what’s the move?`,
+    options: ['Classic dinner', 'Activity date', 'Picnic + walk'],
+  },
+  {
+    match: /dinner|lunch|brunch|bbq|barbecue/i,
+    category: 'Food',
+    question: (t, w) => `${t} ${w} — where should it be?`,
+    options: [],
+  },
+];
+
+export function eventDraftContent(
+  title: string,
+  when: string,
+): { question: string; category: Category; options?: string[] } {
+  for (const rule of EVENT_RULES) {
+    if (rule.match.test(title)) {
+      return {
+        question: rule.question(title, when),
+        category: rule.category,
+        options: rule.options.length > 0 ? rule.options : undefined,
+      };
+    }
+  }
+  return { question: `${title} ${when} — what’s the plan?`, category: detectCategory(title) };
+}
+
 /** What the general-public routine says you're doing → the decision category it feeds. */
 const ACTIVITY_CATEGORY: Record<Activity, Category | null> = {
   eat: 'Food',
@@ -83,6 +157,7 @@ export function buildDrafts(
   now: Date = new Date(),
   limit = 4,
   events: CalEvent[] = [],
+  healthConnected = false,
 ): SurvDraft[] {
   const { slot, weekend, day } = timeContext(now);
   const nowMs = now.getTime();
@@ -119,18 +194,43 @@ export function buildDrafts(
     });
   }
 
-  // The calendar layer: real upcoming events become decision drafts.
+  // The calendar layer: upcoming events become event-TYPE-aware decisions.
   for (const event of upcomingEvents(events, nowMs)) {
-    const question = `${event.title} ${whenLabel(event.start, nowMs)} — what’s the plan?`;
-    if (recentNorm.has(norm(question))) continue;
+    const when = whenLabel(event.start, nowMs);
+    const content = eventDraftContent(event.title, when);
+    if (recentNorm.has(norm(content.question))) continue;
     drafts.push({
       id: `d_cal_${event.id.replace(/[^a-z0-9]/gi, '_').slice(0, 40)}`,
-      question,
-      category: detectCategory(event.title),
-      reason: `📅 On your calendar ${whenLabel(event.start, nowMs)}`,
+      question: content.question,
+      category: content.category,
+      reason: `📅 On your calendar ${when}`,
       durationMs: Math.min(Math.max(event.start - nowMs - HOUR, HOUR), DAY),
       score: 95,
+      options: content.options,
     });
+  }
+
+  // The wellness layer: health signals become recovery/effort decisions.
+  // (Simulated until the device health APIs are connected — see Integrations.)
+  if (healthConnected) {
+    const q =
+      slot === 'morning' || slot === 'midday'
+        ? 'Sleep ran short last night — take it easier today?'
+        : 'Steps goal hit — push again tomorrow or take a recovery day?';
+    if (!recentNorm.has(norm(q))) {
+      drafts.push({
+        id: 'd_health',
+        question: q,
+        category: 'Sports',
+        reason: '❤️ From your health signals',
+        durationMs: 3 * HOUR,
+        score: 74,
+        options:
+          slot === 'morning' || slot === 'midday'
+            ? ['Take it easy', 'Normal day, early night', 'Push through']
+            : ['Push again tomorrow', 'Recovery day', 'Light active recovery'],
+      });
+    }
   }
 
   // Genuinely recurring SURVs resurface as "your usual".

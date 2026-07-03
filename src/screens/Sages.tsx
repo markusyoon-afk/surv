@@ -2,11 +2,12 @@
 // ranked by decisions helped toward good outcomes, not vanity metrics.
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { OwlAvatar, stageForClout } from '../components/OwlAvatar';
-import { activeArenaSurvs } from '../engine/arena';
+import { activeArenaSurvs, type ArenaSurv } from '../engine/arena';
 import { getPopulation, STAR_AVATARS } from '../engine/population';
+import { formatRemaining } from '../engine/sage';
 import { useSurv } from '../engine/store';
 import type { Surv, User } from '../engine/types';
 import { colors, radius } from '../theme';
@@ -30,7 +31,9 @@ function avatarInfluence(user: User): number {
 }
 
 export function Sages() {
-  const { me, users, survs } = useSurv();
+  const { me, users, survs, arenaVotes, voteArena } = useSurv();
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const now = Date.now();
 
   const leaderboard = useMemo(() => {
     const pool = [
@@ -48,24 +51,14 @@ export function Sages() {
       .slice(0, 12);
   }, [users, survs]);
 
-  const topSurvs = useMemo(() => {
-    const arena = activeArenaSurvs(Date.now(), 5).map((s) => ({
-      question: s.question,
-      votes: s.votes,
-      badges: s.badges,
-      who: s.askerName,
-    }));
-    const myBest = [...survs]
-      .sort((a, b) => b.votes.length - a.votes.length)
-      .slice(0, 2)
-      .map((s) => ({
-        question: s.question,
-        votes: s.votes.length,
-        badges: s.status === 'graded' && s.outcome === 'good' ? ['🧠 Wise Call'] : [],
-        who: 'Your network',
-      }));
-    return [...arena.slice(0, 4), ...myBest];
-  }, [survs]);
+  const topArena: ArenaSurv[] = useMemo(() => activeArenaSurvs(now, 5), [Math.floor(now / 30_000)]);
+  const myBest = useMemo(
+    () =>
+      [...survs]
+        .sort((a, b) => b.votes.length - a.votes.length)
+        .slice(0, 2),
+    [survs],
+  );
 
   const myRank = leaderboard.findIndex((r) => r.user.id === me.id);
 
@@ -73,17 +66,68 @@ export function Sages() {
     <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 100 }}>
       <View style={styles.card}>
         <Text style={styles.title}>🏆 Top SURVs right now</Text>
-        {topSurvs.map((s, i) => (
-          <View key={i} style={styles.survRow}>
-            <Text style={styles.rank}>{i + 1}</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.survQ} numberOfLines={2}>{s.question}</Text>
-              <Text style={styles.survMeta}>
-                {s.who} · {s.votes.toLocaleString()} votes {s.badges.join(' ')}
-              </Text>
+        <Text style={styles.sub}>All live — tap one to cast your vote before it closes.</Text>
+        {topArena.map((s, i) => {
+          const myVote = arenaVotes[s.id];
+          const open = expandedId === s.id;
+          return (
+            <Pressable
+              key={s.id}
+              style={styles.survRow}
+              onPress={() => setExpandedId(open ? null : s.id)}
+            >
+              <Text style={styles.rank}>{i + 1}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.survQ} numberOfLines={2}>{s.question}</Text>
+                <Text style={styles.survMeta}>
+                  {s.askerName} · {(s.votes + (myVote ? 1 : 0)).toLocaleString()} votes ·{' '}
+                  <Text style={styles.countdown}>⏳ {formatRemaining(s.expiresAt - now)} left</Text>
+                  {s.badges.length > 0 ? `  ${s.badges.join(' ')}` : ''}
+                </Text>
+                {open && !myVote && (
+                  <View style={styles.voteRow}>
+                    {s.options.map((opt) => (
+                      <Pressable
+                        key={opt.id}
+                        style={styles.voteChip}
+                        onPress={() => voteArena(s.id, opt.id)}
+                      >
+                        <Text style={styles.voteChipText}>{opt.label}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+                {open && myVote && (
+                  <Text style={styles.votedText}>
+                    ✓ Your call: {s.options.find((o) => o.id === myVote)?.label} — you’ll hear how it lands
+                  </Text>
+                )}
+              </View>
+              <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={14} color={colors.inkFaint} />
+            </Pressable>
+          );
+        })}
+        {myBest.map((s, i) => {
+          const live = s.status === 'live' && s.expiresAt > now;
+          return (
+            <View key={s.id} style={styles.survRow}>
+              <Text style={styles.rank}>{topArena.length + i + 1}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.survQ} numberOfLines={2}>{s.question}</Text>
+                <Text style={styles.survMeta}>
+                  Your network · {s.votes.length} votes ·{' '}
+                  {live ? (
+                    <Text style={styles.countdown}>⏳ {formatRemaining(s.expiresAt - now)} left</Text>
+                  ) : s.status === 'graded' && s.outcome === 'good' ? (
+                    '🧠 Wise Call'
+                  ) : (
+                    'closed'
+                  )}
+                </Text>
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
 
       <View style={styles.card}>
@@ -139,6 +183,18 @@ const styles = StyleSheet.create({
   rank: { color: colors.inkFaint, fontWeight: '800', fontSize: 13, width: 18, textAlign: 'center', marginTop: 2 },
   survQ: { color: colors.ink, fontWeight: '600', fontSize: 13.5 },
   survMeta: { color: colors.inkFaint, fontSize: 11.5, marginTop: 2 },
+  countdown: { color: colors.owlDeep, fontWeight: '700' },
+  voteRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 7 },
+  voteChip: {
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: colors.chip,
+    borderRadius: radius.chip,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
+  voteChipText: { color: colors.ink, fontWeight: '600', fontSize: 12 },
+  votedText: { color: colors.owlDeep, fontWeight: '600', fontSize: 12, marginTop: 6 },
   sageRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 6, borderRadius: 10, paddingHorizontal: 4 },
   sageRowMe: { backgroundColor: 'rgba(78,201,180,0.12)' },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
