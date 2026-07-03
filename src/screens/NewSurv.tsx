@@ -1,5 +1,6 @@
 // +SURV — post a decision. Question → AI-suggested options → duration → audience → SURVit!
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,7 +17,7 @@ import { SMART_LABELS, smartCheck } from '../engine/smart';
 import { suggestOptions, type SuggestContext } from '../engine/suggest';
 import { useSurv } from '../engine/store';
 import { CATEGORIES, type Category, type SurvOption } from '../engine/types';
-import { colors, radius } from '../theme';
+import { CATEGORY_ICONS, colors, radius } from '../theme';
 
 const HOUR = 3600_000;
 // Durations the alpha testers voted for in SURV #108 (2011): 1h / 6h / 24h / 3d / 1w
@@ -161,9 +162,19 @@ export function NewSurv({
           </Pressable>
         </View>
         <View style={styles.chips}>
-          {CATEGORIES.map((c) => (
-            <Chip key={c} label={c} on={category === c} onPress={() => tapCategory(c)} />
-          ))}
+          {CATEGORIES.map((c) => {
+            const on = category === c;
+            return (
+              <Pressable key={c} style={[styles.catChip, on && styles.catChipOn]} onPress={() => tapCategory(c)}>
+                <Ionicons
+                  name={CATEGORY_ICONS[c] as keyof typeof Ionicons.glyphMap}
+                  size={14}
+                  color={on ? colors.white : colors.inkSoft}
+                />
+                <Text style={[styles.chipText, on && styles.chipTextOn]}>{c}</Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <View style={styles.smartRow}>
@@ -290,6 +301,18 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: radius.chip, backgroundColor: colors.panelDeep },
   chipOn: { backgroundColor: colors.owl },
+  catChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: radius.chip,
+    backgroundColor: colors.panelDeep,
+    borderWidth: 1,
+    borderColor: colors.hairline,
+  },
+  catChipOn: { backgroundColor: colors.owl, borderColor: colors.owl },
   chipText: { color: colors.inkSoft, fontSize: 12.5, fontWeight: '600' },
   chipTextOn: { color: colors.white },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },

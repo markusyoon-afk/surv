@@ -1,18 +1,21 @@
 // Nests — your spheres of influence. Create new ones, tap a tier to adjust
 // closeness (owner only); each member shows Clout and their strongest SAGE.
 
-import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NestFrame } from '../components/NestFrame';
+import { suggestConnections } from '../engine/connections';
 import { useSurv } from '../engine/store';
 import type { Category } from '../engine/types';
-import { colors, radius } from '../theme';
+import { colors, PLATFORM_ICONS, radius } from '../theme';
 
 const TIER_LABEL = { inner: 'Inner circle', regular: 'Regular', outer: 'Outer' } as const;
 const NEST_EMOJI = ['🪺', '🦉', '🍽️', '🏀', '🎸', '💼', '❤️', '🎮'];
 
 export function Nests() {
-  const { me, nests, users, userById, createNest, cycleTier } = useSurv();
+  const { me, nests, users, userById, createNest, addToNest, cycleTier } = useSurv();
+  const [added, setAdded] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState(NEST_EMOJI[0]);
@@ -22,6 +25,8 @@ export function Nests() {
   const mine = nests.filter(
     (n) => n.ownerId === me.id || n.members.some((m) => m.userId === me.id),
   );
+  const myFirstNest = mine.find((n) => n.ownerId === me.id) ?? mine[0];
+  const suggestions = useMemo(() => suggestConnections(me, users, nests), [me, users, nests]);
 
   const submit = () => {
     if (!name.trim()) {
@@ -143,6 +148,45 @@ export function Nests() {
           </NestFrame>
         );
       })}
+      {suggestions.length > 0 && myFirstNest && (
+        <View style={styles.card}>
+          <Text style={styles.suggestTitle}>People you may know</Text>
+          <Text style={styles.suggestSub}>
+            From your connected platforms — likely already in your circles.
+          </Text>
+          {suggestions.map(({ user, sharedPlatforms, reason }) => (
+            <View key={user.id} style={styles.memberRow}>
+              <Text style={{ fontSize: 20 }}>{user.avatar}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.memberName}>{user.name}</Text>
+                <View style={styles.platformRow}>
+                  {sharedPlatforms.map((p) => (
+                    <Ionicons
+                      key={p}
+                      name={PLATFORM_ICONS[p] as keyof typeof Ionicons.glyphMap}
+                      size={12}
+                      color={colors.inkSoft}
+                    />
+                  ))}
+                  <Text style={styles.memberMeta}>{reason}</Text>
+                </View>
+              </View>
+              <Pressable
+                style={styles.addBtn}
+                onPress={() => {
+                  addToNest(myFirstNest.id, user.id);
+                  setAdded(`${user.name} joined ${myFirstNest.emoji} ${myFirstNest.name}`);
+                }}
+              >
+                <Ionicons name="person-add" size={13} color={colors.white} />
+                <Text style={styles.addBtnText}>Add</Text>
+              </Pressable>
+            </View>
+          ))}
+          {added && <Text style={styles.addedNote}>✓ {added}</Text>}
+        </View>
+      )}
+
       <Text style={styles.hint}>
         Nest closeness feeds each member’s voting weight on your SURVs. Tap a tier to
         adjust it — inner circle counts most. Outcomes teach SURV who your real sages are.
@@ -202,4 +246,18 @@ const styles = StyleSheet.create({
   cloutPill: { backgroundColor: colors.sage, borderRadius: 12, paddingHorizontal: 9, paddingVertical: 3 },
   cloutText: { color: colors.navy, fontWeight: '800', fontSize: 12.5 },
   hint: { color: colors.star, fontSize: 12.5, paddingHorizontal: 6, fontStyle: 'italic' },
+  suggestTitle: { color: colors.ink, fontWeight: '700', fontSize: 15 },
+  suggestSub: { color: colors.inkSoft, fontSize: 12, marginTop: 2, marginBottom: 8 },
+  platformRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 1 },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.owl,
+    borderRadius: radius.chip,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+  },
+  addBtnText: { color: colors.white, fontWeight: '700', fontSize: 12 },
+  addedNote: { color: colors.good, fontWeight: '600', fontSize: 12, marginTop: 6 },
 });

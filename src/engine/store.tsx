@@ -68,6 +68,7 @@ interface SurvStore {
   extendSurv: (survId: string, extraMs: number) => void;
   sweepExpired: () => void;
   createNest: (name: string, emoji: string, memberIds: string[]) => void;
+  addToNest: (nestId: string, userId: string, tier?: ClosenessTier) => void;
   cycleTier: (nestId: string, userId: string) => void;
   toggleConnector: (connector: User['connectors'][number]) => void;
   resetDemo: () => void;
@@ -130,7 +131,10 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
           const saved = JSON.parse(raw) as PersistedState;
           if (saved.users?.length && saved.survs && saved.nests?.length) {
             skipNextSave.current = true;
-            setUsers(saved.users);
+            // Migration: newly-seeded discoverable people join existing saves.
+            const known = new Set(saved.users.map((u) => u.id));
+            const missing = seedUsers().filter((u) => !known.has(u.id));
+            setUsers(missing.length > 0 ? [...saved.users, ...missing] : saved.users);
             setNests(saved.nests);
             setSurvs(sweep(saved.survs));
             setCalendarEvents(saved.calendarEvents ?? []);
@@ -345,6 +349,15 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       },
 
       sweepExpired: () => setSurvs((prev) => sweep(prev)),
+
+      addToNest: (nestId, userId, tier = 'outer') => {
+        setNests((prev) =>
+          prev.map((n) => {
+            if (n.id !== nestId || n.members.some((m) => m.userId === userId)) return n;
+            return { ...n, members: [...n.members, { userId, tier }] };
+          }),
+        );
+      },
 
       createNest: (name, emoji, memberIds) => {
         const trimmed = name.trim();

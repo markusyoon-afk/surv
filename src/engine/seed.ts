@@ -87,6 +87,40 @@ export function seedUsers(): User[] {
       pairTrust: {},
       connectors: ['discord', 'instagram'],
     },
+    // Familiar faces from the 2012 feed — discoverable, not yet in any Nest.
+    {
+      id: 'u_thomas',
+      handle: 'thomaskim',
+      name: 'Thomas Kim',
+      avatar: '🧑‍💻',
+      bio: 'We have a fresh look! Building things for good.',
+      clout: 46,
+      categorySage: { Tech: 58, Work: 52 },
+      pairTrust: {},
+      connectors: ['facebook', 'instagram'],
+    },
+    {
+      id: 'u_william',
+      handle: 'williamko',
+      name: 'William Ko',
+      avatar: '😼',
+      bio: 'Tells things like they are.',
+      clout: 41,
+      categorySage: { Living: 50 },
+      pairTrust: {},
+      connectors: ['facebook', 'discord'],
+    },
+    {
+      id: 'u_changhee',
+      handle: 'changheekim',
+      name: 'Chang Hee Kim',
+      avatar: '🏈',
+      bio: 'Wilfork and the D-line dominate.',
+      clout: 48,
+      categorySage: { Sports: 62 },
+      pairTrust: {},
+      connectors: ['facebook', 'yelp'],
+    },
   ];
 }
 

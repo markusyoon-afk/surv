@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { buildDrafts, categoryQuestion, timeContext } from './drafts';
 import { currentActivity, parseIcs, upcomingEvents } from './schedule';
+import { suggestConnections } from './connections';
 import { smartCheck, smartScore } from './smart';
 import { applyOutcome, formatRemaining, getPairTrust, tally, voterWeight, winningOption } from './sage';
 import { detectCategory, suggestOptionsHeuristic, topInfluencer } from './suggest';
@@ -310,6 +311,24 @@ test('smartCheck lights up for a well-formed decision', () => {
 test('smartCheck flags vague, timeless questions', () => {
   const check = smartCheck('Thoughts on general stuff in the future sometime?', 'Food', [], 168 * 3600_000);
   assert.ok(!check.M && !check.T, 'no options and no timeframe should fail M and T');
+});
+
+// ---- cross-platform connection discovery ----
+
+test('people you may know: platform overlap ranks first, nest members excluded', () => {
+  const sugg = suggestConnections(me, users, nests);
+  const names = sugg.map((s) => s.user.name);
+  assert.ok(names.includes('Chang Hee Kim') && names.includes('Thomas Kim'));
+  assert.ok(!names.includes('Mike Lemke'), 'nest members must not be suggested');
+  const chang = sugg.find((s) => s.user.name === 'Chang Hee Kim')!;
+  assert.ok(chang.sharedPlatforms.includes('yelp'));
+  assert.ok(chang.reason.includes('Yelp'));
+  for (let i = 1; i < sugg.length; i++) {
+    assert.ok(
+      sugg[i - 1].sharedPlatforms.length >= sugg[i].sharedPlatforms.length,
+      'sorted by overlap',
+    );
+  }
 });
 
 console.log(`\nSAGE engine: ${passed} tests passed`);

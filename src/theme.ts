@@ -1,32 +1,67 @@
-// SURV visual language — from the 2011 beta: night-sky navy, crescent moon,
-// mint-green owl, warm off-white panels, teal SAGE accents.
+// SURV visual language v2 — night-sky brand, matured: deeper navy, calmer
+// contrast, hairline borders over heavy shadows, consistent radii, and a
+// single accent. Category iconography via Ionicons.
+
+import type { Category } from './engine/types';
 
 export const colors = {
-  nightTop: '#16334f',
-  night: '#1d4166',
-  nightCard: '#24496f',
-  panel: '#eef2f3',
-  panelDeep: '#e2e9ea',
-  ink: '#26343f',
-  inkSoft: '#5d6f7c',
-  inkFaint: '#93a3ad',
-  owl: '#45b08c',
-  owlDeep: '#2c8a6d',
-  sage: '#57c1b2',
-  sageBar: '#6fd0c2',
+  nightTop: '#0e2136',
+  night: '#132b44',
+  nightCard: '#1c3a58',
+  panel: '#f7f9fa',
+  panelDeep: '#e8edef',
+  ink: '#1f2d38',
+  inkSoft: '#5b6b77',
+  inkFaint: '#98a6b0',
+  owl: '#3aa587',
+  owlDeep: '#2b8a6e',
+  sage: '#4ec9b4',
+  sageBar: '#67d3bf',
   moon: '#f4eec4',
-  star: '#c7d6e6',
+  star: '#b9cbdc',
   danger: '#d9634f',
-  good: '#57b26a',
+  good: '#4caf6d',
   white: '#ffffff',
-  navy: '#132b44',
-  chip: '#d3dee0',
+  navy: '#0e2136',
+  chip: '#dde4e7',
+  hairline: 'rgba(31,45,56,0.08)',
 };
 
 export const fonts = {
-  logo: { fontWeight: '900' as const, letterSpacing: 1 },
-  title: { fontWeight: '800' as const },
+  logo: { fontWeight: '800' as const, letterSpacing: 3 },
+  title: { fontWeight: '700' as const },
   body: { fontWeight: '500' as const },
 };
 
-export const radius = { card: 14, chip: 18, button: 10 };
+export const radius = { card: 16, chip: 20, button: 12 };
+
+/** Ionicons name per decision category. */
+export const CATEGORY_ICONS: Record<Category, string> = {
+  Food: 'restaurant',
+  Shopping: 'cart',
+  Living: 'home',
+  Entertainment: 'film',
+  Sports: 'basketball',
+  Tech: 'hardware-chip',
+  Travel: 'airplane',
+  Style: 'shirt',
+  Work: 'briefcase',
+  Relationships: 'heart',
+};
+
+/** Ionicons name per connected platform. */
+export const PLATFORM_ICONS: Record<string, string> = {
+  facebook: 'logo-facebook',
+  instagram: 'logo-instagram',
+  discord: 'logo-discord',
+  yelp: 'restaurant-outline',
+  google_reviews: 'logo-google',
+};
+
+export const PLATFORM_LABELS: Record<string, string> = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  discord: 'Discord',
+  yelp: 'Yelp',
+  google_reviews: 'Google',
+};

@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
@@ -18,11 +19,11 @@ import { colors } from './src/theme';
 
 type Tab = 'home' | 'new' | 'nests' | 'profile';
 
-const TABS: Array<[Tab, string, string]> = [
-  ['home', '🏠', 'The Nest'],
-  ['new', '➕', '+SURV'],
-  ['nests', '🪺', 'Nests'],
-  ['profile', '🦉', 'You'],
+const TABS: Array<[Tab, keyof typeof Ionicons.glyphMap, string]> = [
+  ['home', 'home', 'The Nest'],
+  ['new', 'add-circle', 'New SURV'],
+  ['nests', 'people', 'Nests'],
+  ['profile', 'person', 'You'],
 ];
 
 const ONBOARDED_KEY = 'surv.onboarded.v1';
@@ -123,17 +124,24 @@ function Shell() {
         </View>
 
         <View style={styles.tabBar}>
-          {TABS.map(([key, icon, label]) => (
-            <Pressable key={key} style={styles.tab} onPress={() => setTab(key)}>
-              <Text style={styles.tabIcon}>{icon}</Text>
-              <Text style={[styles.tabLabel, tab === key && styles.tabLabelOn]}>{label}</Text>
-              {key === 'profile' && dueForMe > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>{dueForMe}</Text>
-                </View>
-              )}
-            </Pressable>
-          ))}
+          {TABS.map(([key, icon, label]) => {
+            const active = tab === key;
+            return (
+              <Pressable key={key} style={styles.tab} onPress={() => setTab(key)}>
+                <Ionicons
+                  name={active ? icon : (`${icon}-outline` as keyof typeof Ionicons.glyphMap)}
+                  size={key === 'new' ? 26 : 22}
+                  color={active ? colors.sage : colors.star}
+                />
+                <Text style={[styles.tabLabel, active && styles.tabLabelOn]}>{label}</Text>
+                {key === 'profile' && dueForMe > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{dueForMe}</Text>
+                  </View>
+                )}
+              </Pressable>
+            );
+          })}
         </View>
 
         <SurvDetail
@@ -179,8 +187,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: { color: colors.white, fontSize: 24, fontWeight: '900', letterSpacing: 2 },
-  tagline: { color: colors.sage, fontSize: 10.5, fontWeight: '700', letterSpacing: 0.4 },
+  logo: { color: colors.white, fontSize: 22, fontWeight: '800', letterSpacing: 3.5 },
+  tagline: { color: colors.sage, fontSize: 10, fontWeight: '600', letterSpacing: 1.2, textTransform: 'uppercase' },
   meterMini: {
     width: 86,
     height: 24,
@@ -203,10 +211,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.nightCard,
   },
-  tab: { flex: 1, alignItems: 'center' },
-  tabIcon: { fontSize: 20 },
-  tabLabel: { color: colors.star, fontSize: 10.5, fontWeight: '700', marginTop: 2 },
-  tabLabelOn: { color: colors.sage },
+  tab: { flex: 1, alignItems: 'center', gap: 3 },
+  tabLabel: { color: colors.star, fontSize: 10, fontWeight: '600', letterSpacing: 0.2 },
+  tabLabelOn: { color: colors.sage, fontWeight: '700' },
   badge: {
     position: 'absolute',
     top: -4,

@@ -1,11 +1,12 @@
 // Feed card: question, countdown, weighted SAGEmeter bars, inline voting.
 
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatRemaining, msRemaining, tally } from '../engine/sage';
 import { useSurv } from '../engine/store';
 import type { Surv } from '../engine/types';
-import { colors, radius } from '../theme';
+import { CATEGORY_ICONS, colors, radius } from '../theme';
 
 export function SageBar({ pct, label, mine, acted }: { pct: number; label: string; mine?: boolean; acted?: boolean }) {
   return (
@@ -36,10 +37,17 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
         <Text style={styles.avatar}>{asker?.avatar ?? '👤'}</Text>
         <View style={{ flex: 1 }}>
           <Text style={styles.asker}>{isMine ? 'You' : asker?.name}</Text>
-          <Text style={styles.meta}>
-            {surv.category} · {surv.audience.kind === 'public' ? 'Public' : 'Nests'} ·{' '}
-            {live ? `Expires in ${formatRemaining(msRemaining(surv))}` : statusLabel(surv)}
-          </Text>
+          <View style={styles.metaRow}>
+            <Ionicons
+              name={CATEGORY_ICONS[surv.category] as keyof typeof Ionicons.glyphMap}
+              size={11}
+              color={colors.inkFaint}
+            />
+            <Text style={styles.meta}>
+              {surv.category} · {surv.audience.kind === 'public' ? 'Public' : 'Nests'} ·{' '}
+              {live ? `${formatRemaining(msRemaining(surv))} left` : statusLabel(surv)}
+            </Text>
+          </View>
         </View>
         {live && <View style={styles.liveDot} />}
       </View>
@@ -88,11 +96,14 @@ const styles = StyleSheet.create({
     padding: 14,
     marginHorizontal: 14,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.hairline,
   },
   header: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8 },
   avatar: { fontSize: 26 },
-  asker: { color: colors.owlDeep, fontWeight: '800', fontSize: 15 },
-  meta: { color: colors.inkSoft, fontSize: 12, marginTop: 1 },
+  asker: { color: colors.ink, fontWeight: '700', fontSize: 15 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  meta: { color: colors.inkFaint, fontSize: 11.5, fontWeight: '500' },
   liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.good },
   question: { color: colors.ink, fontSize: 16, fontWeight: '700', marginBottom: 10, lineHeight: 21 },
   barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 7, gap: 8 },
