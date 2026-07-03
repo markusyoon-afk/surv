@@ -2,8 +2,8 @@
 
 The complete record of how SURV was built — architecture, patterns, pitfalls, and a
 replication recipe for future builds. Companion docs: [PRODUCT_SPEC.md](PRODUCT_SPEC.md)
-(vision + lineage), [SAGE-ALGORITHM.md](SAGE-ALGORITHM.md) (the confidential math),
-[BACKEND.md](BACKEND.md) (Supabase execution plan).
+(vision + lineage), the SAGE algorithm doc (LOCAL-ONLY on Markus's machine —
+never in this repo), [BACKEND.md](BACKEND.md) (Supabase execution plan).
 
 ## 1. What was built
 
@@ -56,7 +56,7 @@ web-assets/    manifest · sw.js · icons
 - **stateRef for timers**: `stateRef.current = {…}` each render so setTimeout advisor
   bursts never act on stale closures.
 - **Adaptive reputation math**: gain = headroom × evidence (Elo-K style), surprise
-  multiplier for contrarian correctness, herding penalty — see SAGE-ALGORITHM.md.
+  multiplier for contrarian correctness, herding penalty — local-only algorithm doc.
 - **Test battery as ratchet**: `npm test` = regression + stress/validation/quality
   suites; every feature lands with tests so future edits can't silently regress
   (the SMART gate caught 3 real bugs the day it was written).
@@ -99,7 +99,7 @@ web-assets/    manifest · sw.js · icons
 Flights: ASAP 5m → 8h max; Forest default 1h, Tree default 3h. Advisor caps: Forest 40,
 Tree 8 (nest/perched sages vote first). Arena: 1,002 new/hr, 0.5–4h lifetimes, top-10
 board refreshes 60s. Population: 100,000 (`POPULATION_SIZE`). Evolution: 40/60/75/90.
-Learning rates: see SAGE-ALGORITHM.md §2–3.
+Learning rates: local-only algorithm doc (ask Markus).
 
 ## 8. Replication recipe (new app, same bones)
 

@@ -346,7 +346,7 @@ function SageAlgorithmCard() {
           <Text style={styles.algoRow}>Arena: same rules, gentler steps (+3 aligned-good, −2 aligned-bad, 0 if not picked)</Text>
           <Text style={styles.hint}>
             Gains shrink as you climb (the (100−current)/70 factor), so a Super Sage is
-            earned through a long record of good calls — full math in docs/SAGE-ALGORITHM.md.
+            earned through a long record of good calls. Full math lives off-repo, dev-only.
           </Text>
         </>
       )}
