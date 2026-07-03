@@ -42,4 +42,8 @@ run('git commit -m "Deploy SURV to GitHub Pages"');
 run(`git push --force "${remote}" gh-pages`);
 fs.rmSync(work, { recursive: true, force: true });
 
+// Restore the root-path build so localhost preview keeps working.
+console.log('Restoring local (root-path) build…');
+execSync('npm run build:web', { cwd: root, stdio: 'inherit' });
+
 console.log(`Deployed. Live at: https://${OWNER}.github.io/${REPO}/`);
