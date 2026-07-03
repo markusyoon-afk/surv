@@ -7,7 +7,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { activeArenaSurvs, arenaStats, type ArenaSurv } from '../engine/arena';
 import { formatRemaining } from '../engine/sage';
 import { useSurv } from '../engine/store';
-import { CATEGORY_ICONS, colors, radius } from '../theme';
+import { CATEGORY_ICONS, CATEGORY_LABELS, colors, radius } from '../theme';
 
 export function ArenaFeed() {
   const { arenaVotes, voteArena } = useSurv();
@@ -68,7 +68,7 @@ function ArenaCard({
               color={colors.inkFaint}
             />
             <Text style={styles.meta}>
-              {surv.category} · {total.toLocaleString()} votes · {formatRemaining(surv.expiresAt - Date.now())} left
+              {CATEGORY_LABELS[surv.category]} · {total.toLocaleString()} votes · {formatRemaining(surv.expiresAt - Date.now())} left
             </Text>
           </View>
         </View>

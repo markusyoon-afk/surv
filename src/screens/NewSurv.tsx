@@ -17,7 +17,7 @@ import { suggestOptions, type SuggestContext } from '../engine/suggest';
 import { useSurv } from '../engine/store';
 import { TRENDING_SURVS, type TrendingSurv } from '../engine/trending';
 import { CATEGORIES, type Category, type SurvOption } from '../engine/types';
-import { CATEGORY_ICONS, colors, radius } from '../theme';
+import { CATEGORY_ICONS, CATEGORY_LABELS, colors, radius } from '../theme';
 
 const HOUR = 3600_000;
 const DURATIONS: Array<[string, number]> = [
@@ -241,17 +241,17 @@ export function NewSurv({
             </Text>
           </Pressable>
         </View>
-        <View style={styles.chips}>
+        <View style={styles.catGrid}>
           {CATEGORIES.map((c) => {
             const on = category === c;
             return (
-              <Pressable key={c} style={[styles.catChip, on && styles.catChipOn]} onPress={() => tapCategory(c)}>
+              <Pressable key={c} style={[styles.catTile, on && styles.catTileOn]} onPress={() => tapCategory(c)}>
                 <Ionicons
                   name={CATEGORY_ICONS[c] as keyof typeof Ionicons.glyphMap}
-                  size={17}
+                  size={22}
                   color={on ? colors.white : colors.owlDeep}
                 />
-                <Text style={[styles.catChipText, on && styles.catChipTextOn]}>{c}</Text>
+                <Text style={[styles.catTileText, on && styles.catTileTextOn]}>{CATEGORY_LABELS[c]}</Text>
               </Pressable>
             );
           })}
@@ -439,20 +439,22 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { paddingHorizontal: 11, paddingVertical: 6, borderRadius: radius.chip, backgroundColor: colors.panelDeep },
   chipOn: { backgroundColor: colors.owl },
-  catChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: radius.chip,
+  catGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  catTile: {
+    width: '17.5%',
+    minWidth: 62,
+    aspectRatio: 1,
+    borderRadius: 14,
     backgroundColor: colors.panelDeep,
     borderWidth: 1,
     borderColor: colors.hairline,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
   },
-  catChipOn: { backgroundColor: colors.owl, borderColor: colors.owl },
-  catChipText: { color: colors.ink, fontSize: 14.5, fontWeight: '700' },
-  catChipTextOn: { color: colors.white },
+  catTileOn: { backgroundColor: colors.owl, borderColor: colors.owl },
+  catTileText: { color: colors.ink, fontSize: 11.5, fontWeight: '700' },
+  catTileTextOn: { color: colors.white },
   chipText: { color: colors.inkSoft, fontSize: 12.5, fontWeight: '600' },
   chipTextOn: { color: colors.white },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },

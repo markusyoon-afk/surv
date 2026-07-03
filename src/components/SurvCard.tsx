@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { formatRemaining, msRemaining, tally } from '../engine/sage';
 import { useSurv } from '../engine/store';
 import type { Surv } from '../engine/types';
-import { CATEGORY_ICONS, colors, radius } from '../theme';
+import { CATEGORY_ICONS, CATEGORY_LABELS, colors, radius } from '../theme';
 
 export function SageBar({ pct, label, mine, acted }: { pct: number; label: string; mine?: boolean; acted?: boolean }) {
   return (
@@ -44,7 +44,7 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
               color={colors.inkFaint}
             />
             <Text style={styles.meta}>
-              {surv.category} · {surv.audience.kind === 'public' ? 'Public' : 'Nests'} ·{' '}
+              {CATEGORY_LABELS[surv.category]} · {surv.audience.kind === 'public' ? 'Forest' : 'Nests'} ·{' '}
               {live ? `${formatRemaining(msRemaining(surv))} left` : statusLabel(surv)}
             </Text>
           </View>

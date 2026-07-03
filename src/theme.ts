@@ -35,6 +35,20 @@ export const fonts = {
 
 export const radius = { card: 16, chip: 20, button: 12 };
 
+/** Display names — punchy, social-app style. Engine keys stay stable. */
+export const CATEGORY_LABELS: Record<Category, string> = {
+  Food: 'Food',
+  Shopping: 'Shopping',
+  Living: 'Life',
+  Entertainment: 'Fun',
+  Sports: 'Fitness',
+  Tech: 'Tech',
+  Travel: 'Travel',
+  Style: 'Style',
+  Work: 'Career',
+  Relationships: 'Love',
+};
+
 /** Ionicons name per decision category. */
 export const CATEGORY_ICONS: Record<Category, string> = {
   Food: 'restaurant',
