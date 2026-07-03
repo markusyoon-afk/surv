@@ -16,6 +16,8 @@ import {
 } from 'react-native';
 import { AVATAR_STAGES, nextStage, OWL_ACCESSORIES, OWL_PALETTES, OWL_RINGS, OWL_SHAPES, OwlAvatar, stageForClout } from '../components/OwlAvatar';
 import { Image } from 'react-native';
+import { CalendarBoard } from '../components/CalendarBoard';
+import type { SurvDraft } from '../engine/drafts';
 import { useSurv } from '../engine/store';
 import { CLAUDE_KEY_STORAGE } from '../engine/suggest';
 import { inviteUrl, shareText } from '../lib/share';
@@ -30,7 +32,7 @@ const CONNECTORS: Array<[ConnectorId, string]> = [
   ['google_reviews', '🟢 Google Reviews'],
 ];
 
-export function Profile() {
+export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
   const { me, survs, toggleConnector, resetDemo, owlStyle, setOwlStyle } = useSurv();
   const pending = survs.filter((s) => s.askerId === me.id && s.status === 'acted');
   const graded = survs.filter((s) => s.askerId === me.id && s.status === 'graded');
@@ -237,7 +239,7 @@ export function Profile() {
         </View>
       </View>
 
-      <ScheduleSettings />
+      <ScheduleSettings onDraft={onDraft} />
 
       <NudgeSettings />
 
@@ -250,7 +252,7 @@ export function Profile() {
   );
 }
 
-function ScheduleSettings() {
+function ScheduleSettings({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
   const { calendarEvents, importCalendar } = useSurv();
   const [ics, setIcs] = useState('');
   const [note, setNote] = useState<string | null>(null);
@@ -270,22 +272,14 @@ function ScheduleSettings() {
     <View style={styles.card}>
       <Text style={styles.section}>Schedule & Calendar</Text>
       <Text style={styles.hint}>
-        SURV runs on the everyday rhythm — work, play, eat, sleep, exercise — and drafts
-        your routine decisions at the right moment:
+        Your week, live: tap any event or rhythm block to launch the decision it raises —
+        posted to your Tree in one tap.
       </Text>
-      <View style={styles.routineChips}>
-        {['💼 Work 9–5 weekdays', '🍽️ Meals 7a · 12p · 6p', '🏋️ Exercise M/W/F 5p', '🎮 Play evenings + weekends', '😴 Sleep 11p–7a'].map(
-          (r) => (
-            <View key={r} style={styles.routineChip}>
-              <Text style={styles.routineChipText}>{r}</Text>
-            </View>
-          ),
-        )}
-      </View>
+      <CalendarBoard onDraft={onDraft} />
       <Text style={styles.hint}>
         Add your real calendar: in Google Calendar use Settings → Export (or any app’s
-        .ics export), open the file, and paste its contents here. Upcoming events become
-        one-tap decision drafts. {upcoming > 0 ? `Currently tracking ${upcoming} upcoming event${upcoming === 1 ? '' : 's'}.` : ''}
+        .ics export), open the file, and paste its contents here. Events land on the board
+        above as tappable decisions. {upcoming > 0 ? `Currently tracking ${upcoming} upcoming event${upcoming === 1 ? '' : 's'}.` : ''}
       </Text>
       <TextInput
         style={styles.icsInput}
@@ -573,9 +567,6 @@ const styles = StyleSheet.create({
   swatch: { borderWidth: 2, borderColor: colors.chip, backgroundColor: colors.white, borderRadius: radius.chip, paddingHorizontal: 11, paddingVertical: 6 },
   swatchOn: { backgroundColor: 'rgba(78,201,180,0.18)' },
   swatchText: { color: colors.ink, fontWeight: '600', fontSize: 12 },
-  routineChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 10 },
-  routineChip: { backgroundColor: colors.panelDeep, borderRadius: radius.chip, paddingHorizontal: 10, paddingVertical: 6 },
-  routineChipText: { color: colors.inkSoft, fontWeight: '700', fontSize: 12 },
   icsInput: {
     backgroundColor: colors.white,
     borderRadius: radius.button,

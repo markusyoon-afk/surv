@@ -9,8 +9,10 @@ import { publishLive, subscribeLive } from '../lib/live';
 import { arenaResult } from './arena';
 import { adviseOption, advisorRationale, avatarAt, pickAdvisor } from './population';
 import { applyArenaResult, applyOutcome, voterWeight } from './sage';
+import type { SurvDraft } from './drafts';
 import { parseIcs, type CalEvent } from './schedule';
-import { ME, seedNests, seedSurvs, seedUsers } from './seed';
+import { ME, levelUpFounder, seedNests, seedSurvs, seedUsers } from './seed';
+import { suggestOptionsHeuristic } from './suggest';
 import type {
   Audience,
   Category,
@@ -89,6 +91,8 @@ interface SurvStore {
     audience: Audience;
     durationMs: number;
   }) => Surv;
+  /** Zero-composer posting: a draft goes straight to your Tree, options auto-filled. */
+  quickPostDraft: (draft: SurvDraft) => Surv;
   actOn: (survId: string, optionId: string) => void;
   /** Grade a decision; returns an instant human-readable SAGE impact summary. */
   grade: (survId: string, outcome: Outcome) => string | null;
@@ -219,7 +223,9 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             // Migration: newly-seeded discoverable people join existing saves.
             const known = new Set(saved.users.map((u) => u.id));
             const missing = seedUsers().filter((u) => !known.has(u.id));
-            setUsers(missing.length > 0 ? [...saved.users, ...missing] : saved.users);
+            // Migration: the founder's save levels up to Masked Sage standing.
+            const migrated = saved.users.map(levelUpFounder);
+            setUsers(missing.length > 0 ? [...migrated, ...missing] : migrated);
             // Migration: the SATT Crew demo nest was retired.
             setNests(saved.nests.filter((n) => n.id !== 'n_satt'));
             setSurvs(sweep(saved.survs));
@@ -287,6 +293,32 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
   const store = useMemo<SurvStore>(() => {
     const userById = (id: string) => users.find((u) => u.id === id);
     const me = userById(ME)!;
+
+    const createSurv: SurvStore['createSurv'] = ({ question, category, options, audience, durationMs }) => {
+      const now = Date.now();
+      const surv: Surv = {
+        id: `s_${now}`,
+        askerId: ME,
+        question,
+        category,
+        options,
+        audience,
+        createdAt: now,
+        expiresAt: now + durationMs,
+        status: 'live',
+        votes: [],
+        comments: [],
+      };
+      setSurvs((prev) => [surv, ...prev]);
+      // The Forest answers immediately: a staggered burst of advisor votes
+      // lands in the first seconds, then the heartbeat keeps them coming.
+      if (audience.kind === 'public') {
+        for (const delay of [1200, 3000, 5500, 8500, 12_000, 16_500, 22_000, 28_000]) {
+          setTimeout(() => engageAdvisor(surv.id), delay);
+        }
+      }
+      return surv;
+    };
 
     return {
       me,
@@ -491,30 +523,33 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         );
       },
 
-      createSurv: ({ question, category, options, audience, durationMs }) => {
-        const now = Date.now();
-        const surv: Surv = {
-          id: `s_${now}`,
-          askerId: ME,
-          question,
-          category,
+      createSurv,
+
+      quickPostDraft: (d) => {
+        const options = d.options?.length
+          ? d.options.map((label, i) => ({
+              id: `opt_q_${Date.now()}_${i}`,
+              label,
+              source: 'ai' as const,
+              why: d.reason,
+            }))
+          : suggestOptionsHeuristic(d.question, me, 3, {
+              users,
+              nests,
+              city: geo?.city,
+              placesByCategory: nearbyPlaces,
+              categoryHint: d.category,
+            }).options;
+        const myNestIds = nests
+          .filter((n) => n.ownerId === ME || n.members.some((m) => m.userId === ME))
+          .map((n) => n.id);
+        return createSurv({
+          question: d.question,
+          category: d.category,
           options,
-          audience,
-          createdAt: now,
-          expiresAt: now + durationMs,
-          status: 'live',
-          votes: [],
-          comments: [],
-        };
-        setSurvs((prev) => [surv, ...prev]);
-        // The Forest answers immediately: a staggered burst of advisor votes
-        // lands in the first seconds, then the heartbeat keeps them coming.
-        if (audience.kind === 'public') {
-          for (const delay of [1200, 3000, 5500, 8500, 12_000, 16_500, 22_000, 28_000]) {
-            setTimeout(() => engageAdvisor(surv.id), delay);
-          }
-        }
-        return surv;
+          audience: myNestIds.length > 0 ? { kind: 'nests', nestIds: myNestIds } : { kind: 'public' },
+          durationMs: Math.min(d.durationMs, 3 * 3600_000), // Tree-optimal flight
+        });
       },
 
       actOn: (survId, optionId) => {

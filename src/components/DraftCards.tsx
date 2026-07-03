@@ -4,7 +4,6 @@
 import React, { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { buildDrafts, type SurvDraft } from '../engine/drafts';
-import { suggestOptionsHeuristic } from '../engine/suggest';
 import { useSurv } from '../engine/store';
 import { colors, radius } from '../theme';
 
@@ -15,7 +14,7 @@ export function DraftCards({
   horizontal?: boolean;
   onSelect: (draft: SurvDraft) => void;
 }) {
-  const { me, users, nests, survs, calendarEvents, healthConnected, geo, nearbyPlaces, createSurv } = useSurv();
+  const { me, survs, calendarEvents, healthConnected, quickPostDraft } = useSurv();
   const drafts = useMemo(
     () =>
       buildDrafts(
@@ -30,34 +29,6 @@ export function DraftCards({
   );
   if (drafts.length === 0) return null;
 
-  /** Zero-composer posting: options auto-filled, flight set, off to your Tree. */
-  const quickPost = (d: SurvDraft) => {
-    const options = d.options?.length
-      ? d.options.map((label, i) => ({
-          id: `opt_q_${Date.now()}_${i}`,
-          label,
-          source: 'ai' as const,
-          why: d.reason,
-        }))
-      : suggestOptionsHeuristic(d.question, me, 3, {
-          users,
-          nests,
-          city: geo?.city,
-          placesByCategory: nearbyPlaces,
-          categoryHint: d.category,
-        }).options;
-    const myNestIds = nests
-      .filter((n) => n.ownerId === me.id || n.members.some((m) => m.userId === me.id))
-      .map((n) => n.id);
-    createSurv({
-      question: d.question,
-      category: d.category,
-      options,
-      audience: myNestIds.length > 0 ? { kind: 'nests', nestIds: myNestIds } : { kind: 'public' },
-      durationMs: Math.min(d.durationMs, 3 * 3600_000), // Tree-optimal flight
-    });
-  };
-
   const cards = drafts.map((d) => (
     <Pressable
       key={d.id}
@@ -69,7 +40,7 @@ export function DraftCards({
         {d.question}
       </Text>
       <View style={styles.actions}>
-        <Pressable style={styles.postBtn} onPress={() => quickPost(d)} hitSlop={6}>
+        <Pressable style={styles.postBtn} onPress={() => quickPostDraft(d)} hitSlop={6}>
           <Text style={styles.postBtnText}>🕊️ Post now</Text>
         </Pressable>
         <Text style={styles.cta}>edit →</Text>

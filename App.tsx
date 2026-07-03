@@ -177,7 +177,14 @@ function Shell() {
           )}
           {tab === 'nests' && <Nests />}
           {tab === 'sages' && <Sages onOpen={setOpenSurv} />}
-          {tab === 'profile' && <Profile />}
+          {tab === 'profile' && (
+            <Profile
+              onDraft={(d) => {
+                setDraft(d);
+                setTab('new');
+              }}
+            />
+          )}
         </View>
 
         <View style={styles.tabBar}>

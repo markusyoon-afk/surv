@@ -8,6 +8,55 @@ const DAY = 24 * HOUR;
 
 export const ME = 'u_markus';
 
+/**
+ * The founder's earned standing: Masked Sage (75%+ band) with a veteran record —
+ * deep evidence counts keep the adaptive gain stable. Also applied as a hydration
+ * migration so existing saves level up.
+ */
+export const FOUNDER_PROFILE = {
+  clout: 78,
+  categorySage: {
+    Work: 84,
+    Tech: 79,
+    Food: 76,
+    Living: 74,
+    Entertainment: 72,
+    Relationships: 71,
+    Shopping: 70,
+    Travel: 68,
+    Sports: 62,
+    Style: 60,
+  } as User['categorySage'],
+  categoryN: {
+    Work: 26,
+    Tech: 21,
+    Food: 18,
+    Living: 14,
+    Entertainment: 12,
+    Relationships: 11,
+    Shopping: 10,
+    Travel: 9,
+    Sports: 7,
+    Style: 6,
+  } as User['categoryN'],
+};
+
+/** Level an existing save's founder up to Masked Sage; never downgrades earned progress. */
+export function levelUpFounder(u: User): User {
+  if (u.id !== ME || u.clout >= 75) return u;
+  const categorySage = { ...FOUNDER_PROFILE.categorySage };
+  for (const [cat, val] of Object.entries(u.categorySage)) {
+    const key = cat as keyof User['categorySage'];
+    if (val !== undefined && (categorySage[key] ?? 0) < val) categorySage[key] = val;
+  }
+  const categoryN = { ...FOUNDER_PROFILE.categoryN };
+  for (const [cat, val] of Object.entries(u.categoryN ?? {})) {
+    const key = cat as keyof NonNullable<User['categoryN']>;
+    if (val !== undefined && (categoryN[key] ?? 0) < val) categoryN[key] = val;
+  }
+  return { ...u, clout: Math.max(u.clout, FOUNDER_PROFILE.clout), categorySage, categoryN };
+}
+
 export function seedUsers(): User[] {
   return [
     {
@@ -16,8 +65,9 @@ export function seedUsers(): User[] {
       name: 'Markus Yoon',
       avatar: '🦉',
       bio: 'Founder. Live it, SURV it!',
-      clout: 42,
-      categorySage: { Work: 55, Tech: 40 },
+      clout: FOUNDER_PROFILE.clout,
+      categorySage: { ...FOUNDER_PROFILE.categorySage },
+      categoryN: { ...FOUNDER_PROFILE.categoryN },
       pairTrust: { u_mike: 0.7, u_insup: 0.62, u_joe: 0.66 },
       connectors: ['yelp', 'google_reviews', 'discord'],
     },

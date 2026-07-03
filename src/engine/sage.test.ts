@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict';
 import { activeArenaSurvs, arenaResult, arenaStats } from './arena';
-import { buildDrafts, categoryQuestion, eventDraftContent, timeContext } from './drafts';
+import { buildDrafts, categoryQuestion, eventDraftContent, routineDraft, timeContext } from './drafts';
 import { adviseOption, advisorRationale, getPopulation, makeAvatar, pickAdvisor, POPULATION_SIZE } from './population';
 import { currentActivity, parseIcs, upcomingEvents } from './schedule';
 import { suggestConnections } from './connections';
@@ -12,7 +12,7 @@ import { TRENDING_SURVS } from './trending';
 import { smartCheck, smartScore } from './smart';
 import { adaptiveGain, applyArenaResult, applyOutcome, formatRemaining, getPairTrust, surpriseFactor, tally, voterWeight, winningOption } from './sage';
 import { detectCategory, detectMeal, placeFitsMeal, suggestOptionsHeuristic, topInfluencer } from './suggest';
-import { seedNests, seedUsers } from './seed';
+import { FOUNDER_PROFILE, levelUpFounder, seedNests, seedUsers } from './seed';
 import type { Surv, User } from './types';
 
 const users = seedUsers();
@@ -506,6 +506,44 @@ test('health signals surface drafts only when connected', () => {
   const on = buildDrafts([], me, wedNoon, 6, [], true);
   assert.ok(!off.some((d) => d.reason.includes('health')), 'no health drafts while disconnected');
   assert.ok(on.some((d) => d.reason.includes('health')), 'health draft appears when connected');
+});
+
+test('calendar-board routine blocks become drafts matched to their moment', () => {
+  const wedEvening = new Date(2026, 6, 1, 18, 30);
+  const meal = routineDraft('eat', [], wedEvening);
+  assert.equal(meal.category, 'Food');
+  assert.ok(meal.question.toLowerCase().includes('dinner'), meal.question);
+  const work = routineDraft('work', [], new Date(2026, 6, 1, 9, 0));
+  assert.equal(work.category, 'Work');
+  const sleep = routineDraft('sleep', [], wedEvening);
+  assert.equal(sleep.category, 'Living');
+  assert.ok(sleep.question.length > 0);
+});
+
+// ---- founder standing migration ----
+
+test('the founder seed stands at Masked Sage (75%+)', () => {
+  assert.ok(me.clout >= 75, `expected 75+, got ${me.clout}`);
+  assert.ok(Object.keys(me.categorySage).length >= 8, 'veteran record spans categories');
+});
+
+test('founder saves below 75 level up without losing earned progress', () => {
+  const saved: User = {
+    ...me,
+    clout: 45,
+    categorySage: { Work: 90, Food: 20 },
+    categoryN: { Work: 40 },
+  };
+  const up = levelUpFounder(saved);
+  assert.equal(up.clout, FOUNDER_PROFILE.clout);
+  assert.equal(up.categorySage.Work, 90, 'earned SAGE above the profile is kept');
+  assert.ok((up.categorySage.Food ?? 0) >= 70, 'weak categories rise to the profile');
+  assert.equal(up.categoryN?.Work, 40, 'evidence counts are kept');
+
+  const already = levelUpFounder({ ...me, clout: 88 });
+  assert.equal(already.clout, 88, 'a stronger founder is untouched');
+  const other = levelUpFounder({ ...linda, clout: 45 });
+  assert.equal(other.clout, 45, 'only the founder levels up');
 });
 
 // ---- meal-verified suggestions ----

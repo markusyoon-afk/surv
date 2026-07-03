@@ -146,6 +146,46 @@ const ACTIVITY_CATEGORY: Record<Activity, Category | null> = {
   sleep: null,
 };
 
+export const ACTIVITY_LABEL: Record<Activity, string> = {
+  eat: '🍽️ Meal',
+  work: '💼 Work',
+  exercise: '🏋️ Exercise',
+  play: '🎮 Play',
+  sleep: '😴 Wind-down',
+};
+
+/**
+ * A tapped routine block on the calendar board becomes a ready SURV draft.
+ * `at` is the block's moment (its day + start hour) so the question matches
+ * that time of day, not the time of tapping.
+ */
+export function routineDraft(
+  activity: Activity,
+  mySurvs: Surv[],
+  at: Date,
+  city?: string | null,
+): SurvDraft {
+  const category = ACTIVITY_CATEGORY[activity];
+  if (!category) {
+    return {
+      id: `d_rt_sleep_${at.getDay()}`,
+      question: 'Lights out on time tonight or one more episode?',
+      category: 'Living',
+      reason: `${ACTIVITY_LABEL.sleep} block on your schedule`,
+      durationMs: HOUR,
+      score: 50,
+    };
+  }
+  return {
+    id: `d_rt_${activity}_${at.getDay()}_${at.getHours()}`,
+    question: categoryQuestion(category, mySurvs, at, city),
+    category,
+    reason: `${ACTIVITY_LABEL[activity]} block on your schedule`,
+    durationMs: HOUR,
+    score: 60,
+  };
+}
+
 /**
  * Ranked drafts for right now: schedule templates boosted by the user's own
  * category habits, plus their genuinely recurring SURVs resurfaced as
