@@ -54,6 +54,8 @@ export interface User {
   clout: number;
   /** Observed expertise per category, 0–100, starts at 30. */
   categorySage: Partial<Record<Category, number>>;
+  /** Graded observations per category — drives the adaptive learning rate. */
+  categoryN?: Partial<Record<Category, number>>;
   /** Asker→voter historical trust, 0–1, keyed by voter id. Starts 0.5. */
   pairTrust: Record<string, number>;
   connectors: ConnectorId[];

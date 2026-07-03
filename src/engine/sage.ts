@@ -38,6 +38,26 @@ const TRUST_STEP = 0.08;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
+/**
+ * Adaptive learning rate (Elo-K / Kalman-gain style): headroom shrinks gains
+ * near the top, and evidence shrinks them as a voter's record accumulates —
+ * newcomers converge fast, veterans are stable and hard to displace.
+ */
+export function adaptiveGain(current: number, observations: number): number {
+  const headroom = (100 - current) / 70;
+  const evidence = 2 / (1 + observations / 8);
+  return clamp(headroom * evidence, 0.15, 2.5);
+}
+
+/**
+ * Surprise multiplier (proper-scoring intuition): being right against the
+ * crowd carries more information than agreeing with it. `share` is the
+ * weighted share of the option this voter backed.
+ */
+export function surpriseFactor(share: number): number {
+  return clamp(1.5 - share, 0.75, 1.5);
+}
+
 export function getCategorySage(user: User, category: Category): number {
   return user.categorySage[category] ?? SAGE_DEFAULT;
 }
@@ -123,6 +143,13 @@ export function applyOutcome(
   const deltas: SageDelta[] = [];
   const seen = new Set<string>();
 
+  // Weighted share per option — the crowd signal for surprise/herding effects.
+  const totalWeight = surv.votes.reduce((s, v) => s + v.weight, 0);
+  const optionWeight: Record<string, number> = {};
+  for (const v of surv.votes) {
+    optionWeight[v.optionId] = (optionWeight[v.optionId] ?? 0) + v.weight;
+  }
+
   for (const vote of surv.votes) {
     if (vote.userId === surv.askerId || seen.has(vote.userId)) continue;
     seen.add(vote.userId);
@@ -131,22 +158,28 @@ export function applyOutcome(
 
     const aligned = vote.optionId === surv.actedOptionId;
     const current = getCategorySage(voter, surv.category);
+    const n = voter.categoryN?.[surv.category] ?? 0;
+    const gain = adaptiveGain(current, n);
+    const share = totalWeight > 0 ? (optionWeight[vote.optionId] ?? 0) / totalWeight : 0.5;
+    const surprise = surpriseFactor(share);
+    // Herding with the crowd into a bad call costs more than a lone mistake.
+    const crowdPenalty = 0.75 + share * 0.75;
 
     let sageDelta: number;
     let cloutDelta: number;
     let trustDelta: number;
     if (outcome === 'good') {
-      // Diminishing returns as SAGE approaches 100.
-      sageDelta = aligned ? GOOD_ALIGNED_SAGE * ((100 - current) / 70) : GOOD_MISALIGNED_SAGE;
+      sageDelta = aligned ? GOOD_ALIGNED_SAGE * gain * surprise : GOOD_MISALIGNED_SAGE;
       cloutDelta = aligned ? CLOUT_STEP : 0;
-      trustDelta = aligned ? TRUST_STEP : -TRUST_STEP / 2;
+      trustDelta = aligned ? TRUST_STEP * surprise : -TRUST_STEP / 2;
     } else {
-      sageDelta = aligned ? BAD_ALIGNED_SAGE : BAD_MISALIGNED_SAGE;
+      sageDelta = aligned ? BAD_ALIGNED_SAGE * crowdPenalty : BAD_MISALIGNED_SAGE * gain * surprise;
       cloutDelta = aligned ? -CLOUT_STEP : CLOUT_STEP;
-      trustDelta = aligned ? -TRUST_STEP : TRUST_STEP;
+      trustDelta = aligned ? -TRUST_STEP : TRUST_STEP * surprise;
     }
 
     voter.categorySage[surv.category] = clamp(Math.round((current + sageDelta) * 10) / 10, 1, 100);
+    voter.categoryN = { ...(voter.categoryN ?? {}), [surv.category]: n + 1 };
     voter.clout = clamp(voter.clout + cloutDelta, 1, 100);
     asker.pairTrust[voter.id] = clamp(getPairTrust(asker, voter.id) + trustDelta, 0, 1);
 
@@ -176,16 +209,19 @@ export function applyArenaResult(
   outcome: Outcome,
 ): { cloutDelta: number; sageDelta: number } {
   const cur = getCategorySage(me, category);
+  const n = me.categoryN?.[category] ?? 0;
+  const gain = adaptiveGain(cur, n);
   let sageDelta: number;
   let cloutDelta: number;
   if (outcome === 'good') {
-    sageDelta = aligned ? 3 * ((100 - cur) / 70) : -0.5;
+    sageDelta = aligned ? 3 * gain : -0.5;
     cloutDelta = aligned ? 1 : 0;
   } else {
-    sageDelta = aligned ? -2 : 1.5;
+    sageDelta = aligned ? -2 : 1.5 * gain;
     cloutDelta = aligned ? -1 : 1;
   }
   me.categorySage[category] = clamp(Math.round((cur + sageDelta) * 10) / 10, 1, 100);
+  me.categoryN = { ...(me.categoryN ?? {}), [category]: n + 1 };
   me.clout = clamp(me.clout + cloutDelta, 1, 100);
   return { cloutDelta, sageDelta };
 }

@@ -293,7 +293,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
           setUsers((prev) =>
             prev.map((u) => {
               if (u.id !== ME) return u;
-              const copy = { ...u, categorySage: { ...u.categorySage } };
+              const copy = { ...u, categorySage: { ...u.categorySage }, categoryN: { ...u.categoryN } };
               const { sageDelta } = applyArenaResult(copy, result.category, aligned, result.outcome);
               if (aligned && result.outcome === 'good') {
                 news.push(
@@ -478,7 +478,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         const copies = new Map(
           users.map((u) => [
             u.id,
-            { ...u, categorySage: { ...u.categorySage }, pairTrust: { ...u.pairTrust } },
+            { ...u, categorySage: { ...u.categorySage }, categoryN: { ...u.categoryN }, pairTrust: { ...u.pairTrust } },
           ]),
         );
         applyOutcome({ ...surv }, outcome, copies);

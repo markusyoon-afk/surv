@@ -252,11 +252,14 @@ function HealthToggle() {
 }
 
 function SageAlgorithmCard() {
+  const { me } = useSurv();
   const [open, setOpen] = useState(false);
+  // The secret sauce: developer eyes only.
+  if (!/markus/i.test(me.name)) return null;
   return (
     <View style={styles.card}>
       <Pressable style={styles.algoHeader} onPress={() => setOpen(!open)}>
-        <Text style={styles.section}>How the SAGEmeter works</Text>
+        <Text style={styles.section}>How the SAGEmeter works (dev only)</Text>
         <Text style={styles.algoToggle}>{open ? 'hide' : 'show'}</Text>
       </Pressable>
       {open && (

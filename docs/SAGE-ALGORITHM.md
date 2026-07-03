@@ -1,7 +1,24 @@
-# The SAGEmeter Algorithm
+# The SAGEmeter Algorithm (v2 — expert grade)
 
-The complete math behind SURV's reputation engine. Every constant lives in
-[src/engine/sage.ts](../src/engine/sage.ts) and is enforced by the engine test suite.
+**Confidential — the secret sauce.** Never surfaced in the product UI (the in-app
+card is gated to the developer). The complete math lives in
+[src/engine/sage.ts](../src/engine/sage.ts), enforced by the engine test suite.
+
+## v2 upgrades over the fixed-step v1
+
+1. **Adaptive learning rate** (Elo-K / Kalman-gain style):
+   `gain = clamp( (100−cur)/70 × 2/(1 + n/8), 0.15, 2.5 )`
+   where `n` = graded observations in that category (`categoryN`). Newcomers
+   converge ~2× faster; veterans are stable and can't be displaced by one lucky
+   streak. Gain never reaches zero — everyone stays learnable.
+2. **Surprise weighting** (proper-scoring intuition): positive updates scale by
+   `surprise = clamp(1.5 − share, 0.75, 1.5)` where `share` is the weighted vote
+   share of the option you backed. Being right *against* the crowd carries more
+   information than agreeing with it — contrarian correctness pays up to 2× herd
+   correctness, in SAGE and in pair-trust.
+3. **Herding penalty**: backing a bad call *with* the crowd costs
+   `−3 × (0.75 + 0.75·share)` — a lone miss is cheap, groupthink is not.
+   This makes echo chambers mathematically unprofitable.
 
 ## State variables
 

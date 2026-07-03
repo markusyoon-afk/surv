@@ -44,10 +44,15 @@ export function SurvCard({ surv, onOpen }: { surv: Surv; onOpen: (surv: Surv) =>
               color={colors.inkFaint}
             />
             <Text style={styles.meta}>
-              {CATEGORY_LABELS[surv.category]} · {surv.audience.kind === 'public' ? 'Forest' : 'Nests'} ·{' '}
+              {CATEGORY_LABELS[surv.category]} ·{' '}
               {live ? `${formatRemaining(msRemaining(surv))} left` : statusLabel(surv)}
             </Text>
           </View>
+        </View>
+        <View style={[styles.scopePill, surv.audience.kind === 'public' ? styles.scopeForest : styles.scopeTree]}>
+          <Text style={styles.scopePillText}>
+            {surv.audience.kind === 'public' ? '🌲 Forest' : '🌳 Tree'}
+          </Text>
         </View>
         {live && <View style={styles.liveDot} />}
       </View>
@@ -105,6 +110,10 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   meta: { color: colors.inkFaint, fontSize: 11.5, fontWeight: '500' },
   liveDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.good },
+  scopePill: { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3, marginRight: 6 },
+  scopeTree: { backgroundColor: 'rgba(58,165,135,0.14)' },
+  scopeForest: { backgroundColor: 'rgba(30,90,140,0.14)' },
+  scopePillText: { fontSize: 10, fontWeight: '700', color: colors.inkSoft },
   question: { color: colors.ink, fontSize: 16, fontWeight: '700', marginBottom: 10, lineHeight: 21 },
   barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 7, gap: 8 },
   barTrack: {

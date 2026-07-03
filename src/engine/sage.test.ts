@@ -10,7 +10,7 @@ import { suggestConnections } from './connections';
 import { buildDigest } from './digest';
 import { TRENDING_SURVS } from './trending';
 import { smartCheck, smartScore } from './smart';
-import { applyArenaResult, applyOutcome, formatRemaining, getPairTrust, tally, voterWeight, winningOption } from './sage';
+import { adaptiveGain, applyArenaResult, applyOutcome, formatRemaining, getPairTrust, surpriseFactor, tally, voterWeight, winningOption } from './sage';
 import { detectCategory, detectMeal, placeFitsMeal, suggestOptionsHeuristic, topInfluencer } from './suggest';
 import { seedNests, seedUsers } from './seed';
 import type { Surv, User } from './types';
@@ -547,6 +547,87 @@ test('placeFitsMeal handles untagged venues by type', () => {
   assert.ok(placeFitsMeal({ name: 'X', distanceKm: 1, kind: 'cafe' }, 'breakfast'));
   assert.ok(!placeFitsMeal({ name: 'X', distanceKm: 1, kind: 'cafe' }, 'dinner'));
   assert.ok(placeFitsMeal({ name: 'X', distanceKm: 1, kind: 'restaurant' }, 'lunch'));
+});
+
+// ---- expert-grade SAGE v2: adaptive learning + surprise weighting ----
+
+test('adaptive gain: newcomers converge fast, veterans are stable', () => {
+  assert.ok(adaptiveGain(30, 0) > adaptiveGain(30, 40) * 2, 'fresh record learns much faster');
+  assert.ok(adaptiveGain(90, 0) < adaptiveGain(30, 0), 'headroom still shrinks gains near the top');
+  assert.ok(adaptiveGain(95, 100) >= 0.15, 'gain never hits zero — always learnable');
+});
+
+test('being right against the crowd pays more than herding right', () => {
+  const mkGraded = (myWeight: number, crowdWeight: number): Surv => ({
+    id: 't_sup',
+    askerId: me.id,
+    question: 'Which one?',
+    category: 'Travel',
+    options: [
+      { id: 'a', label: 'A', source: 'user' },
+      { id: 'b', label: 'B', source: 'user' },
+    ],
+    audience: { kind: 'public' },
+    createdAt: 0,
+    expiresAt: 1,
+    status: 'acted',
+    actedOptionId: 'a',
+    votes: [
+      { userId: 'u_dan', optionId: 'a', weight: myWeight, votedAt: 0 },
+      { userId: 'u_x', optionId: 'b', weight: crowdWeight, votedAt: 0 },
+    ],
+  });
+  const freshUsers = () =>
+    new Map(
+      seedUsers().map((u) => [u.id, { ...u, categorySage: { ...u.categorySage }, categoryN: {}, pairTrust: {} }]),
+    );
+  const contrarian = freshUsers();
+  const herd = freshUsers();
+  const dContra = applyOutcome(mkGraded(0.2, 1.8), 'good', contrarian).find((d) => d.userId === 'u_dan')!;
+  const dHerd = applyOutcome(mkGraded(1.8, 0.2), 'good', herd).find((d) => d.userId === 'u_dan')!;
+  assert.ok(
+    dContra.categorySageDelta > dHerd.categorySageDelta,
+    `contrarian ${dContra.categorySageDelta} should beat herd ${dHerd.categorySageDelta}`,
+  );
+  assert.ok(dContra.trustDelta > dHerd.trustDelta, 'trust also scales with surprise');
+});
+
+test('herding into a bad call costs more than a lone miss', () => {
+  assert.ok(surpriseFactor(0.9) < surpriseFactor(0.2), 'surprise falls as your side grows');
+  const graded: Surv = {
+    id: 't_herd',
+    askerId: me.id,
+    question: 'Q',
+    category: 'Style',
+    options: [
+      { id: 'a', label: 'A', source: 'user' },
+      { id: 'b', label: 'B', source: 'user' },
+    ],
+    audience: { kind: 'public' },
+    createdAt: 0,
+    expiresAt: 1,
+    status: 'acted',
+    actedOptionId: 'a',
+    votes: [
+      { userId: 'u_dan', optionId: 'a', weight: 1.6, votedAt: 0 }, // with the crowd
+      { userId: 'u_insup', optionId: 'b', weight: 0.2, votedAt: 0 },
+    ],
+  };
+  const copies = new Map(
+    seedUsers().map((u) => [u.id, { ...u, categorySage: { ...u.categorySage }, categoryN: {}, pairTrust: {} }]),
+  );
+  const deltas = applyOutcome(graded, 'bad', copies);
+  const herdLoss = deltas.find((d) => d.userId === 'u_dan')!.categorySageDelta;
+  assert.ok(herdLoss < -3, `crowd-backed bad call should cost more than base −3, got ${herdLoss}`);
+});
+
+test('observation counts accumulate and damp later swings', () => {
+  const you: User = { ...me, categorySage: { Food: 30 }, categoryN: {}, pairTrust: {} };
+  const first = applyArenaResult(you, 'Food', true, 'good').sageDelta;
+  for (let i = 0; i < 15; i++) applyArenaResult(you, 'Food', true, 'good');
+  const later = applyArenaResult(you, 'Food', true, 'good').sageDelta;
+  assert.ok((you.categoryN?.Food ?? 0) >= 17, 'observations recorded');
+  assert.ok(later < first, `later gains damped: first ${first}, later ${later}`);
 });
 
 console.log(`\nSAGE engine: ${passed} tests passed`);
