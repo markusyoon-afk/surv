@@ -2,6 +2,9 @@
 
 **Live it! SURV it!** — the social decision engine, reborn.
 
+**Live app: https://markusyoon-afk.github.io/surv/** — open on your iPhone,
+Share → Add to Home Screen.
+
 Started in 2010–2011 (SURV LLC), rebuilt in 2026 as an iOS-first Expo app. Post a
 decision, let your **Nests** (spheres of influence) vote during a countdown, **act**
 on the result, then **swipe the verdict** — good call or bad. Every verdict retrains

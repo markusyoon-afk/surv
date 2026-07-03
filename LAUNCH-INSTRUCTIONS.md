@@ -1,20 +1,18 @@
 # 🦉 Launching SURV on your iPhone
 
-## The 2-minute path (do this)
+## The permanent URL (live now, PC on or off)
 
-1. On your PC, double-click **SHARE-SURV-ONLINE.bat**
-   (first run downloads the Cloudflare tunnel, ~60 MB, then starts SURV).
-2. Look for the line ending in **`.trycloudflare.com`** — that's your public URL.
-3. Open that URL in **Safari on your iPhone** → tap **Share** → **Add to Home Screen**.
+**https://markusyoon-afk.github.io/surv/**
+
+1. Open it in **Safari on your iPhone** → tap **Share** → **Add to Home Screen**.
    SURV installs with the owl icon and launches full-screen like a native app.
-4. **Send the same URL to friends.** They add it to their home screens too. Everyone
-   gets the full app — their own Nests, SURVs, and SAGE algorithm on their device.
+2. **Send the same URL to friends** — they install it the same way. Everyone gets
+   the full app: their own Nests, SURVs, and SAGE algorithm on their device.
 
-Keep the PC window open while people are joining. The URL changes each time you
-restart the tunnel (fine for beta bursts; see "permanent URL" below).
+To ship an update to the live app: `npm run deploy:pages` (rebuilds and pushes).
 
-**Home-only alternative (no tunnel):** double-click **START-SURV.bat** — it prints a
-`http://<your-PC-IP>:8090` URL that works on your iPhone over the same Wi-Fi.
+**Offline/local alternatives:** **START-SURV.bat** (localhost + same-Wi-Fi LAN URL)
+or **SHARE-SURV-ONLINE.bat** (temporary Cloudflare tunnel URL).
 
 ## How sharing works (no accounts, no server — links are the network)
 
