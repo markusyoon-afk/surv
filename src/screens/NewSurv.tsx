@@ -163,6 +163,7 @@ export function NewSurv({
 
   /** One-tap adoption of a proven SURV. */
   const applyTrending = (t: TrendingSurv) => {
+    questionIsAuto.current = true;
     setQuestion(t.question);
     setCategory(t.category);
     setOptions(
@@ -178,16 +179,25 @@ export function NewSurv({
     setRejected([]);
   };
 
-  /** Tap a category with an empty question → SURV drafted from habits + schedule + location. */
+  // Machine-drafted questions can be swapped freely; hand-typed words are sacred.
+  const questionIsAuto = useRef(false);
+  // Questions already offered per category this session — every tap rotates fresh.
+  const qHistory = useRef<Partial<Record<Category, string[]>>>({});
+
+  /** Tap a category → a fresh relevant SURV drafted for it (habits + time + place). */
   const tapCategory = (c: Category) => {
     setCategory(c);
     setCategoryPicked(true);
-    if (question.trim() === '') {
-      const mySurvs = survs.filter((s) => s.askerId === me.id);
-      const q = categoryQuestion(c, mySurvs, new Date(), geo?.city);
-      setQuestion(q);
-      suggestFor(q, c);
-    }
+    if (question.trim() !== '' && !questionIsAuto.current) return; // user's own words stay
+    const mySurvs = survs.filter((s) => s.askerId === me.id);
+    const seen = qHistory.current[c] ?? [];
+    const q = categoryQuestion(c, mySurvs, new Date(), geo?.city, [...seen, question]);
+    qHistory.current[c] = [...seen, q].slice(-8);
+    questionIsAuto.current = true;
+    setQuestion(q);
+    setShown([]);
+    setOptions((prev) => prev.filter((o) => o.source === 'user'));
+    suggestFor(q, c);
   };
 
   const locate = async () => {
@@ -201,6 +211,7 @@ export function NewSurv({
 
   /** One tap: prefill the routine decision and load its options. */
   const applyDraft = (draft: SurvDraft) => {
+    questionIsAuto.current = true;
     setQuestion(draft.question);
     setCategory(draft.category);
     setDuration(Math.min(Math.max(draft.durationMs, 5 * 60_000), MAX_FLIGHT));
@@ -286,7 +297,10 @@ export function NewSurv({
           placeholder="What to do?! (max 140 characters)"
           placeholderTextColor={colors.inkFaint}
           value={question}
-          onChangeText={(t) => setQuestion(t.slice(0, MAX_Q))}
+          onChangeText={(t) => {
+            questionIsAuto.current = false;
+            setQuestion(t.slice(0, MAX_Q));
+          }}
           multiline
         />
         <Text style={styles.counter}>{MAX_Q - question.length}</Text>

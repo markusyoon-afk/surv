@@ -330,16 +330,82 @@ const CATEGORY_QUESTIONS: Record<Category, SlotBank> = {
   Relationships: { default: 'Who should I catch up with this week?' },
 };
 
+/** Deeper rotation bank per category — repeat taps never serve the same question. */
+const CATEGORY_QUESTION_BANK: Record<Category, string[]> = {
+  Food: [
+    'Meal prep this week — what’s the plan?',
+    'One new dish to try this week — what should it be?',
+    'Groceries tonight or takeout — which way?',
+    'Weekend brunch spot — where to?',
+  ],
+  Shopping: [
+    'What’s the one purchase to finally pull the trigger on?',
+    'Gift for the next birthday coming up — what do I get?',
+    'Keep or return the last thing I bought?',
+    'Cut one subscription this month — which one?',
+  ],
+  Living: [
+    'Declutter one space this weekend — which one?',
+    'What should I fix around the house first?',
+    'Early night or push through the to-do list?',
+    'One habit to start this month — which one?',
+  ],
+  Entertainment: [
+    'Weekend plans — concert, movie, or game night?',
+    'What’s the next series to binge?',
+    'Tickets worth grabbing this month — which show?',
+    'Playlist refresh — what’s the vibe?',
+  ],
+  Sports: [
+    'What’s the fitness goal for this month?',
+    'Morning workout or evening session tomorrow?',
+    'New routine: weights, classes, or cardio?',
+    'Rest day or push day tomorrow?',
+  ],
+  Tech: [
+    'Which gadget deserves the next upgrade?',
+    'New phone now or wait for the fall lineup?',
+    'Pick a smart-home upgrade — what first?',
+    'Fix the laptop or finally replace it?',
+  ],
+  Travel: [
+    'Book the flight now or watch fares for a week?',
+    'Beach, mountains, or city for the next trip?',
+    'Long weekend trip — where within 3 hours?',
+    'Solo trip or group trip next?',
+  ],
+  Style: [
+    'New season, one wardrobe refresh — what first?',
+    'Haircut this week — keep it or change it up?',
+    'Sneakers or boots for this season?',
+    'One accessory to level up the look — which?',
+  ],
+  Work: [
+    'Ask for the raise this quarter — yes or no?',
+    'Take the stretch project or protect the calendar?',
+    'One skill to invest in this quarter — which?',
+    'Networking event this week — go or skip?',
+  ],
+  Relationships: [
+    'Date night this weekend — what’s the plan?',
+    'Call the parents tonight or on the weekend?',
+    'Plan the next friends hangout — what do we do?',
+    'Reconnect with one old friend — who?',
+  ],
+};
+
 /**
  * A ready-to-post question for a tapped category: the user's own recurring
- * question in that category wins (machine-learned habit); otherwise a
- * time-slot-appropriate SMART template, localized with their city when known.
+ * question wins (machine-learned habit), then the time-slot template, then the
+ * rotation bank — `exclude` skips anything already offered, so every tap
+ * drafts something fresh. Localized with their city when known.
  */
 export function categoryQuestion(
   category: Category,
   mySurvs: Surv[],
   now: Date = new Date(),
   city?: string | null,
+  exclude: string[] = [],
 ): string {
   // Habit first: a question they've asked 2+ times in this category.
   const freq = new Map<string, { count: number; question: string }>();
@@ -351,13 +417,19 @@ export function categoryQuestion(
     else freq.set(k, { count: 1, question: s.question });
   }
   const habitual = [...freq.values()].filter((f) => f.count >= 2).sort((a, b) => b.count - a.count)[0];
-  if (habitual) return habitual.question;
 
   const { slot } = timeContext(now);
   const bank = CATEGORY_QUESTIONS[category];
-  let question = bank[slot] ?? bank.default;
-  if (city && (category === 'Food' || category === 'Entertainment' || category === 'Travel')) {
-    question = question.replace(' — ', ` near ${city} — `);
-  }
-  return question;
+  const localize = (q: string) =>
+    city && (category === 'Food' || category === 'Entertainment' || category === 'Travel')
+      ? q.replace(' — ', ` near ${city} — `)
+      : q;
+
+  const candidates = [
+    ...(habitual ? [habitual.question] : []),
+    localize(bank[slot] ?? bank.default),
+    ...CATEGORY_QUESTION_BANK[category].map(localize),
+  ];
+  const excluded = new Set(exclude.map(norm));
+  return candidates.find((q) => !excluded.has(norm(q))) ?? candidates[habitual ? 1 : 0];
 }

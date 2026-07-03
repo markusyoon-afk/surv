@@ -562,6 +562,19 @@ test('meal context is detected from the question', () => {
   assert.equal(detectMeal('Dinner tonight — where should I go?'), 'dinner');
 });
 
+test('category taps rotate fresh questions, never repeating', () => {
+  const seen: string[] = [];
+  for (let i = 0; i < 5; i++) {
+    const q = categoryQuestion('Tech', [], new Date(2026, 6, 1, 12), null, seen);
+    assert.ok(!seen.includes(q), `repeat on tap ${i + 1}: ${q}`);
+    assert.ok(q.length > 10 && q.includes('?'), q);
+    seen.push(q);
+  }
+  // Exhausted bank wraps around instead of dead-ending.
+  const wrapped = categoryQuestion('Tech', [], new Date(2026, 6, 1, 12), null, seen);
+  assert.ok(wrapped.length > 10, wrapped);
+});
+
 test('entertainment suggestions name actual hot titles', () => {
   const { options } = suggestOptionsHeuristic('What should we watch tonight?', me, 3, {
     hotShows: ['Severance', 'The Bear'],
