@@ -47,6 +47,8 @@ interface PersistedState {
   perched?: string[];
   owlStyle?: OwlStyle;
   hotMedia?: HotMedia;
+  /** When this state was last persisted — drives the while-you-were-away catch-up. */
+  savedAt?: number;
 }
 
 export interface OwlStyle {
@@ -83,6 +85,14 @@ interface SurvStore {
   /** Paste .ics text (Google Calendar / iCal export) → events feed the drafts engine. */
   importCalendar: (icsText: string) => number;
   setMyName: (name: string) => void;
+  /**
+   * Onboarding: claim this device as YOUR profile. A non-founder name starts a
+   * clean Hatchling — fresh meter, no inherited history — so shared installs
+   * never boot as someone else's identity.
+   */
+  startFresh: (name: string, palette?: string) => void;
+  /** One-time "while you were away" notice after a catch-up on reopen. */
+  welcomeBack: string | null;
   /** An invited/inviting human enters your world as a known face. */
   addAcquaintance: (name: string) => void;
   importSurv: (packet: { surv: Omit<Surv, 'votes' | 'comments'>; askerName: string }) => Surv | null;
@@ -170,6 +180,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
   const [perched, setPerched] = useState<string[]>([]);
   const [owlStyle, setOwlStyleState] = useState<OwlStyle>({});
   const [hotMedia, setHotMedia] = useState<HotMedia>(FALLBACK_MEDIA);
+  const [welcomeBack, setWelcomeBack] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const skipNextSave = useRef(false);
 
@@ -246,6 +257,29 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
             setPerched(saved.perched ?? []);
             setOwlStyleState(saved.owlStyle ?? {});
             if (saved.hotMedia?.shows?.length) setHotMedia(saved.hotMedia);
+            // While you were away, the sages kept working: elapsed time since
+            // the last save turns into fresh advisor votes on your live SURVs.
+            const away = Date.now() - (saved.savedAt ?? Date.now());
+            if (away > 10 * 60_000) {
+              const mine = saved.survs.filter(
+                (s) => s.askerId === ME && s.status === 'live' && s.expiresAt > Date.now(),
+              );
+              let queued = 0;
+              for (const s of mine) {
+                const cap = s.audience.kind === 'public' ? 40 : 8;
+                const room = Math.max(0, cap - s.votes.length);
+                const n = Math.min(room, 1 + Math.floor(away / 3600_000), 6);
+                for (let k = 0; k < n; k++) {
+                  setTimeout(() => engageAdvisor(s.id), 800 + queued * 1100);
+                  queued++;
+                }
+              }
+              if (queued > 0) {
+                setWelcomeBack(
+                  `While you were away, ${queued} sage${queued === 1 ? '' : 's'} weighed in on your decisions 🦉`,
+                );
+              }
+            }
           }
         }
       } catch {
@@ -296,6 +330,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
       perched,
       owlStyle,
       hotMedia,
+      savedAt: Date.now(),
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
   }, [users, nests, survs, calendarEvents, geo, nearbyPlaces, arenaVotes, arenaProcessed, healthConnected, perched, owlStyle, hotMedia, hydrated]);
@@ -494,6 +529,44 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         setUsers((prev) =>
           prev.map((u) => (u.id === ME ? { ...u, name: trimmed } : u)),
         );
+      },
+
+      welcomeBack,
+
+      startFresh: (name, palette) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        const isFounder = /markus/i.test(trimmed);
+        setUsers((prev) =>
+          prev.map((u) => {
+            if (u.id !== ME) return u;
+            if (isFounder) return { ...u, name: trimmed };
+            // A brand-new sage: fresh meter, no inherited history.
+            return {
+              ...u,
+              name: trimmed,
+              bio: 'Growing my Tree 🌱',
+              clout: 30,
+              categorySage: {},
+              categoryN: {},
+              pairTrust: {},
+            };
+          }),
+        );
+        if (!isFounder) {
+          // The demo cast stays as a living world; the founder's own decisions
+          // and votes don't belong to a new user.
+          setSurvs((prev) =>
+            prev
+              .filter((s) => s.askerId !== ME)
+              .map((s) =>
+                s.votes.some((v) => v.userId === ME)
+                  ? { ...s, votes: s.votes.filter((v) => v.userId !== ME) }
+                  : s,
+              ),
+          );
+        }
+        if (palette) setOwlStyleState((prev) => ({ ...prev, palette }));
       },
 
       importSurv: ({ surv, askerName }) => {

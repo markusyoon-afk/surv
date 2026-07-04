@@ -544,6 +544,8 @@ test('founder saves below 75 level up without losing earned progress', () => {
   assert.equal(already.clout, 88, 'a stronger founder is untouched');
   const other = levelUpFounder({ ...linda, clout: 45 });
   assert.equal(other.clout, 45, 'only the founder levels up');
+  const friend = levelUpFounder({ ...me, name: 'Test Friend', clout: 30 });
+  assert.equal(friend.clout, 30, 'a friend’s fresh profile never inherits founder standing');
 });
 
 // ---- meal-verified suggestions ----

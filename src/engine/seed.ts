@@ -41,9 +41,14 @@ export const FOUNDER_PROFILE = {
   } as User['categoryN'],
 };
 
-/** Level an existing save's founder up to Masked Sage; never downgrades earned progress. */
+/**
+ * Level an existing save's founder up to Masked Sage; never downgrades earned
+ * progress. Gated on the NAME, not just the id — every device's local "me"
+ * shares the id, and a friend's fresh profile must never inherit the founder's
+ * standing.
+ */
 export function levelUpFounder(u: User): User {
-  if (u.id !== ME || u.clout >= 75) return u;
+  if (u.id !== ME || u.clout >= 75 || !/markus/i.test(u.name)) return u;
   const categorySage = { ...FOUNDER_PROFILE.categorySage };
   for (const [cat, val] of Object.entries(u.categorySage)) {
     const key = cat as keyof User['categorySage'];

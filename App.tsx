@@ -38,7 +38,7 @@ function Shell() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [importNotice, setImportNotice] = useState<string | null>(null);
   const [draft, setDraft] = useState<SurvDraft | null>(null);
-  const { me, survs, sweepExpired, liveTick, setMyName, addAcquaintance, importSurv, importVote, hydrated, owlStyle } = useSurv();
+  const { me, survs, sweepExpired, liveTick, startFresh, welcomeBack, addAcquaintance, importSurv, importVote, hydrated, owlStyle } = useSurv();
   const dueForMe = survs.filter(
     (s) => s.askerId === me.id && (s.status === 'acted' || s.status === 'deciding'),
   ).length;
@@ -92,11 +92,17 @@ function Shell() {
       .catch(() => {});
   }, []);
 
-  const dismissOnboarding = (name: string) => {
-    setMyName(name);
+  const dismissOnboarding = (name: string, palette?: string) => {
+    startFresh(name, palette);
     setShowOnboarding(false);
     AsyncStorage.setItem(ONBOARDED_KEY, 'y').catch(() => {});
   };
+
+  // The world kept turning while the app was closed — say so, once.
+  useEffect(() => {
+    if (welcomeBack) showNotice(welcomeBack);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [welcomeBack]);
 
   // Incoming share links (web): #s= imports a friend's SURV, #v= lands a vote-back.
   useEffect(() => {
@@ -225,7 +231,7 @@ function Shell() {
             <Text style={styles.noticeText}>{importNotice}</Text>
           </View>
         )}
-        {showOnboarding && <Onboarding defaultName={me.name} onDone={dismissOnboarding} />}
+        {showOnboarding && <Onboarding onDone={dismissOnboarding} />}
         <StatusBar style="light" />
         </View>
       </SafeAreaView>
