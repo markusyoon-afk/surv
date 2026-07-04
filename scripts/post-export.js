@@ -18,8 +18,12 @@ for (const file of fs.readdirSync(assets)) {
   fs.copyFileSync(path.join(assets, file), path.join(dist, file));
 }
 
+// Build stamp: Profile shows it so "is my phone on the latest?" has an answer.
+const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+
 const inject = `
 <title>SURV</title>
+<script>window.__SURV_BUILD=${JSON.stringify(stamp)}</script>
 <link rel="manifest" href="./manifest.json"/>
 <meta name="theme-color" content="#1d4166"/>
 <link rel="apple-touch-icon" href="./icon-180.png"/>

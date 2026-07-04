@@ -252,6 +252,12 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
       <Tap style={styles.reset} onPress={resetDemo}>
         <Text style={styles.resetText}>Reset demo data</Text>
       </Tap>
+      <Text style={styles.buildStamp}>
+        SURV build{' '}
+        {typeof window !== 'undefined' && (window as { __SURV_BUILD?: string }).__SURV_BUILD
+          ? (window as { __SURV_BUILD?: string }).__SURV_BUILD
+          : 'dev'}
+      </Text>
     </ScrollView>
   );
 }
@@ -570,6 +576,7 @@ const styles = StyleSheet.create({
   inviteBtnText: { color: colors.white, fontWeight: '800', fontSize: 12.5 },
   reset: { alignItems: 'center', paddingVertical: 10 },
   resetText: { color: colors.star, fontSize: 12.5, textDecorationLine: 'underline' },
+  buildStamp: { color: colors.star, fontSize: 10.5, textAlign: 'center', marginTop: 10, opacity: 0.7 },
   customLabel: { color: colors.inkFaint, fontWeight: '700', fontSize: 11, marginTop: 8, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.5 },
   swatch: { borderWidth: 2, borderColor: colors.chip, backgroundColor: colors.white, borderRadius: radius.chip, paddingHorizontal: 11, paddingVertical: 6 },
   swatchOn: { backgroundColor: 'rgba(78,201,180,0.18)' },

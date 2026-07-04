@@ -79,7 +79,13 @@ export function NewSurv({
     hotMovies: hotMedia.movies,
   });
 
+  // Stale-response guard: rapid category toggles fire overlapping async
+  // requests; only the NEWEST one may touch the screen. Without this, an
+  // earlier category's slower response overwrites the one you just picked.
+  const suggestSeq = useRef(0);
+
   const suggestFor = async (q: string, lockCategory?: Category, page = false) => {
+    const seq = ++suggestSeq.current;
     setBusy(true);
     try {
       const current = options.filter((o) => o.source !== 'user').map((o) => o.label);
@@ -89,6 +95,7 @@ export function NewSurv({
         categoryHint: lockCategory,
         excludeLabels: baseExclude,
       });
+      if (seq !== suggestSeq.current) return; // superseded — a newer tap owns the screen
       if (page && result.options.length < 3) {
         // Pool exhausted — restart the cycle, but never re-serve what's on
         // screen right now: every press must visibly change the options.
@@ -98,6 +105,7 @@ export function NewSurv({
           categoryHint: lockCategory,
           excludeLabels: [...rejected, ...current],
         });
+        if (seq !== suggestSeq.current) return;
         const have = new Set(result.options.map((o) => o.label));
         result = {
           ...wrap,
@@ -111,7 +119,7 @@ export function NewSurv({
         return [...kept, ...result.options].slice(0, 4);
       });
     } finally {
-      setBusy(false);
+      if (seq === suggestSeq.current) setBusy(false);
     }
   };
 
@@ -149,11 +157,13 @@ export function NewSurv({
     const remaining = options.filter((o) => o.id !== opt.id);
     setOptions(remaining);
     if (opt.source === 'user' || question.trim().length < 8) return;
+    const seq = suggestSeq.current;
     const result = await suggestOptions(question, me, 1, {
       ...suggestCtx(),
       categoryHint: category,
       excludeLabels: [...nextRejected, ...remaining.map((o) => o.label)],
     });
+    if (seq !== suggestSeq.current) return; // category changed mid-flight
     if (result.options.length > 0) {
       setOptions((prev) => (prev.length < 4 ? [...prev, result.options[0]] : prev));
     }
@@ -203,9 +213,20 @@ export function NewSurv({
     questionIsAuto.current = true;
     setQuestion(q);
     setPostHint(null);
-    setShown([]);
-    setOptions((prev) => prev.filter((o) => o.source === 'user'));
-    suggestFor(q, c);
+    // Instant, synchronous fill — the phone never shows a category with the
+    // previous category's options, no matter how fast you toggle.
+    const instant = suggestOptionsHeuristic(q, me, 3, {
+      ...suggestCtx(),
+      categoryHint: c,
+      excludeLabels: rejected,
+    });
+    setShown(instant.options.map((o) => o.label));
+    setOptions((prev) => {
+      const kept = prev.filter((o) => o.source === 'user');
+      return [...kept, ...instant.options].slice(0, 4);
+    });
+    suggestSeq.current++; // cancel any in-flight refinement from earlier taps
+    suggestFor(q, c); // Claude refinement when a key is connected; harmless echo otherwise
   };
 
   const locate = async () => {
