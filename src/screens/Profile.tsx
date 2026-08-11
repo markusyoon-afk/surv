@@ -38,6 +38,22 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
   const pending = survs.filter((s) => s.askerId === me.id && s.status === 'acted');
   const graded = survs.filter((s) => s.askerId === me.id && s.status === 'graded');
   const sageEntries = Object.entries(me.categorySage) as Array<[string, number]>;
+  // The Invite button never plays dead: every outcome says what happened.
+  const [inviteNote, setInviteNote] = useState<string | null>(null);
+
+  const invite = async () => {
+    const result = await shareText(
+      `🦉 Be part of my daily decisions — I'm on SURV, where my circle helps me decide the everyday stuff (and we all get wiser doing it): ${inviteUrl(me.name)}`,
+    );
+    setInviteNote(
+      result === 'copied'
+        ? '✓ Invite copied — paste it into any text or chat'
+        : result === 'failed'
+          ? `Couldn’t open sharing — your link: ${inviteUrl(me.name)}`
+          : null,
+    );
+    if (result === 'copied') setTimeout(() => setInviteNote(null), 6000);
+  };
 
   return (
     <ScrollView
@@ -51,17 +67,15 @@ export function Profile({ onDraft }: { onDraft: (draft: SurvDraft) => void }) {
             <Text style={styles.name}>{me.name}</Text>
             <Text style={styles.bio}>{me.bio}</Text>
           </View>
-          <Tap
-            style={styles.inviteBtn}
-            onPress={() =>
-              shareText(
-                `🦉 Be part of my daily decisions — I'm on SURV, where my circle helps me decide the everyday stuff (and we all get wiser doing it): ${inviteUrl(me.name)}`,
-              )
-            }
-          >
+          <Tap style={styles.inviteBtn} onPress={invite}>
             <Text style={styles.inviteBtnText}>＋ Invite</Text>
           </Tap>
         </View>
+        {inviteNote && (
+          <Text style={styles.inviteNote} selectable>
+            {inviteNote}
+          </Text>
+        )}
         <Text style={styles.section}>SAGEmeter</Text>
         <View style={styles.meterTrack}>
           <View style={[styles.meterFill, { width: `${me.clout}%` }]} />
@@ -574,6 +588,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   inviteBtnText: { color: colors.white, fontWeight: '800', fontSize: 12.5 },
+  inviteNote: { color: colors.owlDeep, fontWeight: '700', fontSize: 12, marginTop: 6 },
   reset: { alignItems: 'center', paddingVertical: 10 },
   resetText: { color: colors.star, fontSize: 12.5, textDecorationLine: 'underline' },
   buildStamp: { color: colors.star, fontSize: 10.5, textAlign: 'center', marginTop: 10, opacity: 0.7 },

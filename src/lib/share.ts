@@ -37,9 +37,18 @@ function dec<T>(raw: string): T | null {
 
 const onWeb = () => Platform.OS === 'web' && typeof window !== 'undefined';
 
-/** The app's own URL when running on web (works for LAN, tunnel, or hosted). */
-export function appBaseUrl(): string | null {
-  if (!onWeb()) return null;
+/**
+ * The base every shared link is built on. A recipient must always be able to
+ * open it — so dev/preview origins (localhost etc.) fall back to the canonical
+ * live URL, and native shares use it directly. A future custom domain works
+ * automatically because the real hosted origin passes through.
+ */
+export function appBaseUrl(): string {
+  if (!onWeb()) return LIVE_URL;
+  const { hostname } = window.location;
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.endsWith('.local')) {
+    return LIVE_URL;
+  }
   return window.location.origin + window.location.pathname;
 }
 
@@ -88,16 +97,26 @@ export function clearShareHash(): void {
 
 /** Share via the native sheet where available; clipboard fallback on desktop. */
 export async function shareText(message: string): Promise<'shared' | 'copied' | 'failed'> {
-  try {
-    if (onWeb()) {
-      const nav = window.navigator as Navigator & { share?: (d: { text: string }) => Promise<void> };
-      if (nav.share) {
+  if (onWeb()) {
+    const nav = window.navigator as Navigator & { share?: (d: { text: string }) => Promise<void> };
+    if (nav.share) {
+      try {
         await nav.share({ text: message });
         return 'shared';
+      } catch (e) {
+        // The sheet opened and the user closed it — that's not a failure.
+        if ((e as Error)?.name === 'AbortError') return 'shared';
+        // Real share failure → fall through to the clipboard.
       }
+    }
+    try {
       await window.navigator.clipboard.writeText(message);
       return 'copied';
+    } catch {
+      return 'failed';
     }
+  }
+  try {
     await Share.share({ message });
     return 'shared';
   } catch {
