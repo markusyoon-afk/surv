@@ -12,6 +12,7 @@ import { TRENDING_SURVS } from './trending';
 import { smartCheck, smartScore } from './smart';
 import { adaptiveGain, applyArenaResult, applyOutcome, clampFlight, formatRemaining, getPairTrust, MAX_FLIGHT_MS, surpriseFactor, tally, voterWeight, winningOption } from './sage';
 import { detectCategory, detectMeal, placeFitsMeal, suggestOptionsHeuristic, topInfluencer } from './suggest';
+import { curationLevel, outcomeBoost, outcomeStats, provenPicks } from './insight';
 import { FOUNDER_PROFILE, levelUpFounder, seedNests, seedSurvs, seedUsers } from './seed';
 import type { Surv, User } from './types';
 
@@ -587,6 +588,44 @@ test('every flight fits the 8-hour ceiling — legacy, seeds, and imports', () =
   for (const s of seedSurvs()) {
     assert.ok(s.expiresAt - s.createdAt <= MAX_FLIGHT_MS, `seed ${s.id} exceeds 8h`);
   }
+});
+
+// ---- the personal intelligence layer ----
+
+test('proven picks come from acted-on 👍 outcomes and outrank templates', () => {
+  const graded = seedSurvs().filter((s) => s.status === 'graded' || s.status === 'acted');
+  // Build a graded history: the bike SURV acted on Hybrid; grade it good.
+  const history: Surv[] = seedSurvs().map((s) =>
+    s.id === 's_bike' ? { ...s, status: 'graded' as const, outcome: 'good' as const } : s,
+  );
+  const picks = provenPicks(history, 'Shopping');
+  assert.ok(picks.includes('Hybrid'), `expected Hybrid in ${picks}`);
+  assert.equal(provenPicks(history, 'Travel').length, 0, 'no wins → no proven picks');
+  void graded;
+
+  const { options } = suggestOptionsHeuristic('Should I buy a new bike bag?', me, 3, {
+    categoryHint: 'Shopping',
+    provenPicks: picks,
+  });
+  assert.equal(options[0].label, 'Hybrid', 'the proven pick leads the suggestions');
+  assert.ok(options[0].why?.includes('proven'), options[0].why ?? 'no why');
+});
+
+test('curation grows with the meter and follows the outcome record', () => {
+  assert.equal(curationLevel(30), 0, 'Hatchlings are still being learned');
+  assert.equal(curationLevel(45), 1);
+  assert.equal(curationLevel(78), 2, 'Masked Sage gets full curation');
+
+  const history: Surv[] = seedSurvs().map((s) =>
+    s.id === 's_bike' || s.id === 's_pedal'
+      ? { ...s, status: 'graded' as const, outcome: 'good' as const, actedOptionId: s.actedOptionId ?? s.options[0].id }
+      : s,
+  );
+  const stats = outcomeStats(history.filter((s) => ['s_bike', 's_pedal'].includes(s.id)));
+  const sage = { ...me, clout: 78 };
+  const hatchling = { ...me, clout: 30 };
+  assert.ok(outcomeBoost(stats, 'Shopping', sage) > 0, 'good record boosts the category for a sage');
+  assert.equal(outcomeBoost(stats, 'Shopping', hatchling), 0, 'no curation before the meter earns it');
 });
 
 test('category taps rotate fresh questions, never repeating', () => {

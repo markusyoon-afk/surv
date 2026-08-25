@@ -2,6 +2,7 @@
 // wind-down) pre-drafted for the current moment, ranked by the user's own
 // posting habits. Pure functions — fully unit-testable.
 
+import { curationReason, outcomeBoost, outcomeStats } from './insight';
 import { currentActivity, upcomingEvents, whenLabel, type Activity, type CalEvent } from './schedule';
 import { detectCategory } from './suggest';
 import type { Category, Surv, User } from './types';
@@ -193,7 +194,7 @@ export function routineDraft(
  */
 export function buildDrafts(
   mySurvs: Surv[],
-  _me: User,
+  me: User,
   now: Date = new Date(),
   limit = 4,
   events: CalEvent[] = [],
@@ -201,6 +202,10 @@ export function buildDrafts(
 ): SurvDraft[] {
   const { slot, weekend, day } = timeContext(now);
   const nowMs = now.getTime();
+
+  // The intelligence layer: the user's own outcome record steers scoring —
+  // categories where their calls keep going well earn their way up.
+  const stats = outcomeStats(mySurvs);
 
   const catCount = new Map<Category, number>();
   for (const s of mySurvs) catCount.set(s.category, (catCount.get(s.category) ?? 0) + 1);
@@ -224,13 +229,15 @@ export function buildDrafts(
     if (recentNorm.has(norm(t.question))) continue;
     const habitBoost = Math.min(catCount.get(t.category) ?? 0, 5) * 5;
     const routineBoost = t.category === activityCategory ? 12 : 0;
+    const curated = outcomeBoost(stats, t.category, me);
+    const why = curated > 0 ? curationReason(stats, t.category) : null;
     drafts.push({
       id: `d_${norm(t.question).replace(/ /g, '_').slice(0, 48)}`,
       question: t.question,
       category: t.category,
-      reason: t.reason,
+      reason: why ? `${t.reason} · ${why}` : t.reason,
       durationMs: t.durationMs,
-      score: t.base + habitBoost + routineBoost,
+      score: t.base + habitBoost + routineBoost + curated,
     });
   }
 

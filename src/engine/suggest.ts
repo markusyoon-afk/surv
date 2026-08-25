@@ -66,6 +66,8 @@ export interface SuggestContext {
   hotShows?: string[];
   /** Actual chart-topping movies (iTunes RSS). */
   hotMovies?: string[];
+  /** Options this user acted on and graded 👍 before — their proven picks. */
+  provenPicks?: string[];
 }
 
 let optionSeq = 0;
@@ -266,6 +268,17 @@ export function suggestOptionsHeuristic(
       });
     }
   }
+  // The user's own validated judgment outranks any chart or template: picks
+  // they acted on and graded 👍 come back as first-class suggestions.
+  (ctx?.provenPicks ?? []).forEach((label, i) => {
+    candidates.push({
+      label,
+      source: 'history',
+      why: 'Went well for you before — your proven pick',
+      score: 90 - i * 4,
+    });
+  });
+
   for (const signal of NEST_SIGNAL_MOCK[category] ?? []) {
     candidates.push({ label: signal, source: 'nest', why: 'Trending in your Nests', score: 72 });
   }

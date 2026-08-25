@@ -11,6 +11,7 @@ import { arenaResult } from './arena';
 import { adviseOption, advisorRationale, avatarAt, pickAdvisor } from './population';
 import { applyArenaResult, applyOutcome, clampFlight, voterWeight } from './sage';
 import type { SurvDraft } from './drafts';
+import { provenPicks } from './insight';
 import { parseIcs, type CalEvent } from './schedule';
 import { ME, levelUpFounder, seedNests, seedSurvs, seedUsers } from './seed';
 import { suggestOptionsHeuristic } from './suggest';
@@ -228,6 +229,47 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
     );
     return advisor.name;
   }, []);
+
+  /** GPS → city + real nearby places per category; suggestions become geolocated. */
+  const requestLocation = useCallback(async (): Promise<boolean> => {
+    const pos = await getCurrentPosition();
+    if (!pos) return false;
+    setGeo({ ...pos, city: null, updatedAt: Date.now() });
+    // Enrich in the background: city name + real places per category.
+    // Overpass rate-limits parallel queries, so fetch sequentially.
+    reverseCity(pos)
+      .then((city) => setGeo((g) => (g ? { ...g, city } : g)))
+      .catch(() => {});
+    (async () => {
+      for (const category of GEO_CATEGORIES) {
+        try {
+          const places = await fetchNearbyPlaces(pos, category);
+          if (places.length > 0) {
+            setNearbyPlaces((prev) => ({ ...prev, [category]: places }));
+          }
+        } catch {
+          // skip category on failure; next location request retries
+        }
+        await new Promise((r) => setTimeout(r, 700));
+      }
+    })();
+    return true;
+  }, []);
+
+  // GPS stays on: when permission was already granted, silently refresh a
+  // stale fix on open so suggestions are always geolocated — no re-asking.
+  useEffect(() => {
+    if (!hydrated) return;
+    if (geo && Date.now() - geo.updatedAt < 30 * 60_000) return;
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) return;
+    navigator.permissions
+      .query({ name: 'geolocation' as PermissionName })
+      .then((p) => {
+        if (p.state === 'granted') requestLocation().catch(() => {});
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   // Hydrate once from disk; seeds remain the first-run experience.
   useEffect(() => {
@@ -478,30 +520,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
         return news;
       },
 
-      requestLocation: async () => {
-        const pos = await getCurrentPosition();
-        if (!pos) return false;
-        setGeo({ ...pos, city: null, updatedAt: Date.now() });
-        // Enrich in the background: city name + real places per category.
-        // Overpass rate-limits parallel queries, so fetch sequentially.
-        reverseCity(pos)
-          .then((city) => setGeo((g) => (g ? { ...g, city } : g)))
-          .catch(() => {});
-        (async () => {
-          for (const category of GEO_CATEGORIES) {
-            try {
-              const places = await fetchNearbyPlaces(pos, category);
-              if (places.length > 0) {
-                setNearbyPlaces((prev) => ({ ...prev, [category]: places }));
-              }
-            } catch {
-              // skip category on failure; next location request retries
-            }
-            await new Promise((r) => setTimeout(r, 700));
-          }
-        })();
-        return true;
-      },
+      requestLocation,
 
       importCalendar: (icsText) => {
         const parsed = parseIcs(icsText);
@@ -641,6 +660,7 @@ export function SurvProvider({ children }: { children: React.ReactNode }) {
               categoryHint: d.category,
               hotShows: hotMedia.shows,
               hotMovies: hotMedia.movies,
+              provenPicks: provenPicks(survs.filter((s) => s.askerId === ME), d.category, 2),
             }).options;
         const myNestIds = nests
           .filter((n) => n.ownerId === ME || n.members.some((m) => m.userId === ME))

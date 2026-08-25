@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   PanResponder,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,12 +13,30 @@ import {
   View,
 } from 'react-native';
 import { Tap } from '../components/Tap';
-import { buildDrafts, categoryQuestion, type SurvDraft } from '../engine/drafts';
+import { buildDrafts, categoryQuestion, eventDraftContent, type SurvDraft } from '../engine/drafts';
+import { provenPicks } from '../engine/insight';
+import { upcomingEvents, whenLabel, type CalEvent } from '../engine/schedule';
 import { suggestOptions, suggestOptionsHeuristic, type SuggestContext } from '../engine/suggest';
 import { useSurv } from '../engine/store';
 import { TRENDING_SURVS, type TrendingSurv } from '../engine/trending';
 import { CATEGORIES, type Category, type SurvOption } from '../engine/types';
 import { CATEGORY_COLORS, CATEGORY_ICONS, CATEGORY_LABELS, colors, radius } from '../theme';
+
+/** Minimal Web Speech API surface (Safari 14.5+/Chrome; prefixed on WebKit). */
+interface SpeechRec {
+  lang: string;
+  interimResults: boolean;
+  continuous: boolean;
+  onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
+  onend: () => void;
+  onerror: () => void;
+  start: () => void;
+  stop: () => void;
+}
+type SpeechWindow = Window & {
+  SpeechRecognition?: new () => SpeechRec;
+  webkitSpeechRecognition?: new () => SpeechRec;
+};
 
 const HOUR = 3600_000;
 // Daily decisions, not deep thought: 8 hrs is the ceiling.
@@ -77,7 +96,69 @@ export function NewSurv({
     placesByCategory: nearbyPlaces,
     hotShows: hotMedia.shows,
     hotMovies: hotMedia.movies,
+    // Your own validated judgment: picks you acted on and graded 👍.
+    provenPicks: provenPicks(
+      survs.filter((s) => s.askerId === me.id),
+      categoryPicked ? category : undefined,
+      2,
+    ),
   });
+
+  // GPS on at the moment of creation — composing is when location matters.
+  useEffect(() => {
+    if (geo) return;
+    const ask = () => {
+      locate();
+    };
+    if (typeof navigator !== 'undefined' && navigator.permissions?.query) {
+      navigator.permissions
+        .query({ name: 'geolocation' as PermissionName })
+        .then((p) => {
+          if (p.state !== 'denied') ask();
+        })
+        .catch(ask);
+    } else {
+      ask();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Speak your SURV: Web Speech API fills the question from your voice.
+  const [listening, setListening] = useState(false);
+  const recRef = useRef<{ stop: () => void } | null>(null);
+  const speechSupported =
+    Platform.OS === 'web' &&
+    typeof window !== 'undefined' &&
+    !!((window as SpeechWindow).SpeechRecognition ?? (window as SpeechWindow).webkitSpeechRecognition);
+
+  const toggleMic = () => {
+    const w = window as SpeechWindow;
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!SR) return;
+    if (listening) {
+      recRef.current?.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (e) => {
+      const said = Array.from({ length: e.results.length }, (_, i) => e.results[i][0].transcript)
+        .join(' ')
+        .trim();
+      if (said) {
+        questionIsAuto.current = false;
+        setQuestion(said.slice(0, MAX_Q));
+      }
+    };
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recRef.current = rec;
+    setListening(true);
+    setPostHint(null);
+    rec.start();
+  };
 
   // Stale-response guard: rapid category toggles fire overlapping async
   // requests; only the NEWEST one may touch the screen. Without this, an
@@ -327,6 +408,9 @@ export function NewSurv({
   return (
     <ScrollView contentContainerStyle={styles.wrap} keyboardShouldPersistTaps="handled">
       {question.trim() === '' && options.length === 0 && (
+        <DayStrip events={calendarEvents} onPick={applyDraft} />
+      )}
+      {question.trim() === '' && options.length === 0 && (
         <View style={styles.ideasWrap}>
           <View style={styles.ideasHeader}>
             <Text style={styles.ideasTitle}>IDEAS — ONE TAP AND IT’S DRAFTED</Text>
@@ -364,7 +448,23 @@ export function NewSurv({
           }}
           multiline
         />
-        <Text style={styles.counter}>{MAX_Q - question.length}</Text>
+        <View style={styles.qFootRow}>
+          {speechSupported ? (
+            <Tap style={[styles.micBtn, listening && styles.micBtnOn]} onPress={toggleMic} hitSlop={6}>
+              <Ionicons
+                name={listening ? 'mic' : 'mic-outline'}
+                size={15}
+                color={listening ? colors.white : colors.owlDeep}
+              />
+              <Text style={[styles.micText, listening && { color: colors.white }]}>
+                {listening ? 'Listening… tap when done' : 'Speak it'}
+              </Text>
+            </Tap>
+          ) : (
+            <View />
+          )}
+          <Text style={styles.counter}>{MAX_Q - question.length}</Text>
+        </View>
         {stashedQ && (
           <Tap
             style={styles.restoreRow}
@@ -523,6 +623,63 @@ export function NewSurv({
   );
 }
 
+/**
+ * Your day, synced: today's calendar rendered where you create — each event
+ * pre-drafts the question it raises. One tap and the SURV is written.
+ */
+function DayStrip({ events, onPick }: { events: CalEvent[]; onPick: (d: SurvDraft) => void }) {
+  const now = Date.now();
+  const upcoming = upcomingEvents(events, now, 24 * HOUR);
+  if (events.length === 0) {
+    return (
+      <View style={styles.dayWrap}>
+        <Text style={styles.dayTitle}>YOUR DAY</Text>
+        <Text style={styles.dayHint}>
+          Sync your calendar (You tab → Schedule & Calendar) and today’s events will predict
+          your questions here.
+        </Text>
+      </View>
+    );
+  }
+  if (upcoming.length === 0) return null;
+  return (
+    <View style={styles.dayWrap}>
+      <Text style={styles.dayTitle}>YOUR DAY — TAP AN EVENT AND ITS QUESTION DRAFTS ITSELF</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayStrip}>
+        {upcoming.map((e) => {
+          const at = new Date(e.start);
+          const content = eventDraftContent(e.title, whenLabel(e.start, now));
+          return (
+            <Tap
+              key={e.id}
+              style={styles.dayChip}
+              onPress={() =>
+                onPick({
+                  id: `d_day_${e.id.replace(/[^a-z0-9]/gi, '_')}`.slice(0, 44),
+                  question: content.question,
+                  category: content.category,
+                  reason: `📅 ${e.title}`,
+                  durationMs: Math.min(Math.max(e.start - now - HOUR, HOUR), 8 * HOUR),
+                  score: 95,
+                  options: content.options,
+                })
+              }
+            >
+              <Text style={styles.dayChipTime}>
+                {at.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })} ·{' '}
+                {whenLabel(e.start, now)}
+              </Text>
+              <Text style={styles.dayChipTitle} numberOfLines={1}>
+                {e.title}
+              </Text>
+            </Tap>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
 function sourceIcon(source: SurvOption['source']): string {
   switch (source) {
     case 'yelp': return '🔴';
@@ -619,7 +776,43 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
   },
-  counter: { alignSelf: 'flex-end', color: colors.inkFaint, fontSize: 11, marginTop: 2 },
+  counter: { color: colors.inkFaint, fontSize: 11 },
+  qFootRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  micBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: colors.owl,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  micBtnOn: { backgroundColor: colors.danger, borderColor: colors.danger },
+  micText: { color: colors.owlDeep, fontWeight: '700', fontSize: 11.5 },
+  dayWrap: { marginBottom: 12 },
+  dayTitle: {
+    color: colors.sage,
+    fontFamily: 'SpaceGrotesk_500Medium',
+    fontSize: 10.5,
+    letterSpacing: 1.3,
+    marginBottom: 6,
+    paddingHorizontal: 2,
+  },
+  dayHint: { color: colors.star, fontSize: 12, paddingHorizontal: 2 },
+  dayStrip: { gap: 8, paddingRight: 8 },
+  dayChip: {
+    backgroundColor: colors.nightCard,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: 'rgba(78,201,180,0.30)',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    minWidth: 140,
+    maxWidth: 210,
+  },
+  dayChipTime: { color: colors.sage, fontWeight: '800', fontSize: 10.5 },
+  dayChipTitle: { color: colors.white, fontFamily: 'SpaceGrotesk_500Medium', fontSize: 12.5, marginTop: 3 },
   restoreRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   restoreText: { color: colors.owlDeep, fontSize: 11.5, fontWeight: '600', flex: 1 },
   optHint: { color: colors.inkFaint, fontSize: 11, marginBottom: 6, marginTop: 2 },
